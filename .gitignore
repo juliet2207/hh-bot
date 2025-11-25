@@ -64,6 +64,7 @@ postgres-data/
 cache/
 .cache/
 aiogram_state/
+.ruff_cache/
 
 # --- Project specific ---
 # generated docs or templates
@@ -71,3 +72,4 @@ generated/
 documents/
 tmp/
 temp/
+*.zip
