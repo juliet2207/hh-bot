@@ -165,4 +165,4 @@ def create_vacancy_buttons(query: str, page: int, per_page: int, total_count: in
     """Create row of buttons for vacancies on the current page, showing absolute indices."""
     start_idx = page * per_page
     end_idx = min(start_idx + per_page, total_count)
-    return [{"text": str(i + 1), "callback_data": f"vacancy_detail:{query}:{i}"} for i in range(start_idx, end_idx)]
+    return [{"text": f"{i + 1}.", "callback_data": f"vacancy_detail:{query}:{i}"} for i in range(start_idx, end_idx)]

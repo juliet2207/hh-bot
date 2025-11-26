@@ -274,8 +274,6 @@ class UserRepository:
             )
             result = await self.session.execute(stmt)
             users = list(result.scalars().all())
-            if users:
-                self.logger.debug(f"Found {len(users)} users with schedule set")
             return users
         except Exception as e:
             self.logger.error(f"Error fetching users with schedule: {e}")

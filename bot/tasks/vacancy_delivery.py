@@ -5,10 +5,10 @@ from zoneinfo import ZoneInfo
 
 from aiogram import Bot
 
-from bot.db.database import get_db_session
+from bot.db.database import db_session
 from bot.db.search_query_repository import SearchQueryRepository
 from bot.db.user_repository import UserRepository
-from bot.handlers.search.common import VACANCIES_PER_PAGE, build_search_keyboard
+from bot.handlers.search.common import build_search_keyboard
 from bot.services.hh_service import hh_service
 from bot.utils.i18n import detect_lang
 from bot.utils.logging import get_logger
@@ -19,7 +19,8 @@ logger = get_logger(__name__)
 # Temporary default timezone until user timezones are added to preferences
 DEFAULT_TZ = ZoneInfo("Europe/Moscow")
 MAX_SENT_IDS = 200
-MAX_VACANCIES_PER_USER = 10
+MAX_VACANCIES_PER_USER = 20
+DAILY_PER_PAGE = 5
 
 
 def _already_sent_today(prefs: dict, now_local: datetime) -> bool:
@@ -89,7 +90,7 @@ async def send_vacancies_to_user(user, bot: Bot, now_utc: datetime, force: bool 
     sent_ids_set = set(sent_ids)
     lang = detect_lang(user.language_code)
 
-    async with await get_db_session() as session:
+    async with db_session() as session:
         search_repo = SearchQueryRepository(session)
         last_query = await search_repo.get_latest_search_query_any(user.id)
 
@@ -127,15 +128,14 @@ async def send_vacancies_to_user(user, bot: Bot, now_utc: datetime, force: bool 
     total_found = len(vacancies)
 
     # Persist and cache for detail/pagination handlers
-    await store_search_results(
-        user.id, last_query.query_text, vacancies, response_time, per_page=MAX_VACANCIES_PER_USER
-    )
+    await store_search_results(user.id, last_query.query_text, vacancies, response_time, per_page=per_page)
     cache_vacancies(user.id, last_query.query_text, vacancies, total_found)
 
     page = 0
-    total_pages = (len(vacancies) + VACANCIES_PER_PAGE - 1) // VACANCIES_PER_PAGE
-    text = format_search_page(last_query.query_text, vacancies, page, VACANCIES_PER_PAGE, total_found, lang)
-    reply_markup = build_search_keyboard(last_query.query_text, page, total_pages, VACANCIES_PER_PAGE, len(vacancies))
+    per_page = DAILY_PER_PAGE
+    total_pages = (len(vacancies) + per_page - 1) // per_page
+    text = format_search_page(last_query.query_text, vacancies, page, per_page, total_found, lang)
+    reply_markup = build_search_keyboard(last_query.query_text, page, total_pages, per_page, len(vacancies))
 
     try:
         await bot.send_message(
@@ -155,7 +155,7 @@ async def send_vacancies_to_user(user, bot: Bot, now_utc: datetime, force: bool 
     new_ids = [vac.get("id") for vac in vacancies if vac.get("id")]
     combined_ids = (sent_ids + new_ids)[-MAX_SENT_IDS:]
 
-    async with await get_db_session() as session:
+    async with db_session() as session:
         repo = UserRepository(session)
         await repo.update_preferences(
             user.tg_user_id,

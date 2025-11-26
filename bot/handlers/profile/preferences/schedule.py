@@ -2,7 +2,7 @@ from aiogram import F, types
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 
-from bot.db.database import get_db_session
+from bot.db.database import db_session
 from bot.db.search_query_repository import SearchQueryRepository
 from bot.db.user_repository import UserRepository
 from bot.handlers.profile.states import EditPreferences
@@ -20,7 +20,7 @@ logger = get_logger(__name__)
 @router.message(Command("vacancy_schedule"))
 async def cmd_vacancy_schedule(message: types.Message):
     tg_id = str(message.from_user.id)
-    async with await get_db_session() as session:
+    async with db_session() as session:
         user_repo = UserRepository(session)
         user = await user_repo.get_user_by_tg_id(tg_id)
 
@@ -39,7 +39,7 @@ async def cmd_vacancy_schedule(message: types.Message):
     tz = prefs.get("timezone") or "Europe/Moscow"
     last_sent = prefs.get("vacancy_last_sent_at") or t("profile.not_set", lang)
 
-    async with await get_db_session() as session:
+    async with db_session() as session:
         sq_repo = SearchQueryRepository(session)
         last_query = await sq_repo.get_latest_search_query_any(user.id)
 
@@ -54,14 +54,15 @@ async def cmd_vacancy_schedule(message: types.Message):
             timezone=tz,
             query=query_text,
             last_sent=last_sent,
-        )
+        ),
+        parse_mode="HTML",
     )
 
 
 @router.message(Command("vacancy_schedule_test"))
 async def cmd_vacancy_schedule_test(message: types.Message):
     tg_id = str(message.from_user.id)
-    async with await get_db_session() as session:
+    async with db_session() as session:
         user_repo = UserRepository(session)
         user = await user_repo.get_user_by_tg_id(tg_id)
 

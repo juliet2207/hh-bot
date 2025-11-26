@@ -34,7 +34,7 @@ async def pagination_handler(callback: CallbackQuery):
         query = parts[1]
         page = int(parts[2])
 
-        logger.info(f"Pagination request from user {user_id} (@{username}): query '{query}', page {page}")
+        logger.debug(f"Pagination request from user {user_id} (@{username}): query '{query}', page {page}")
 
         user_obj, lang = await get_or_create_user_lang(callback)
         user_db_id = user_obj.id if user_obj else None

@@ -1,12 +1,11 @@
 from aiogram import F, Router, types
 from aiogram.fsm.context import FSMContext
 
-from bot.db.database import db_session
-from bot.db.user_repository import UserRepository
 from bot.handlers.profile.states import EditProfile
 from bot.utils.i18n import t
 from bot.utils.lang import resolve_lang
 from bot.utils.logging import get_logger
+from bot.utils.profile_edit import is_clear_command, split_name, update_user_prefs
 
 logger = get_logger(__name__)
 router = Router()
@@ -31,22 +30,18 @@ async def save_name(message: types.Message, state: FSMContext):
     user_id = str(message.from_user.id)
     lang = await resolve_lang(user_id, message.from_user.language_code if message.from_user else None)
 
-    if name_raw.lower() in {"clear", "удалить", "сбросить", "none", "null"}:
+    if is_clear_command(name_raw):
         first, last = None, None
     else:
         if not name_raw:
             await message.answer(t("profile.edit_name_empty", lang))
             return
-        parts = name_raw.split(maxsplit=1)
-        first = parts[0].strip()
-        last = parts[1].strip() if len(parts) > 1 else None
+        first, last = split_name(name_raw)
         if not first:
             await message.answer(t("profile.edit_name_first_empty", lang))
             return
 
-    async with db_session() as session:
-        repo = UserRepository(session)
-        await repo.update_user_name(user_id, first_name=first, last_name=last)
+    await update_user_prefs(user_id, first_name=first, last_name=last)
 
     state_data = await state.get_data()
     prompt_chat_id = state_data.get("name_prompt_chat_id")

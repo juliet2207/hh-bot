@@ -29,3 +29,11 @@ async def load_user(tg_id: str):
         return await repo.get_user_by_tg_id(tg_id)
 
 
+def split_name(raw: str) -> tuple[str | None, str | None]:
+    """Split raw name into first/last (last optional)."""
+    if not raw:
+        return None, None
+    parts = raw.split(maxsplit=1)
+    first = parts[0].strip()
+    last = parts[1].strip() if len(parts) > 1 else None
+    return first, last

@@ -144,7 +144,7 @@ async def vacancy_detail_handler(callback: CallbackQuery):
             reply_markup=back_button_markup,
         )
         await safe_answer(callback)
-        logger.info(f"Sent vacancy detail idx={idx} for user {user_id} query '{query}'")
+        logger.debug(f"Sent vacancy detail idx={idx} for user {user_id} query '{query}'")
 
     except ValueError:
         await safe_answer(callback, text=t("search.vacancy_detail.invalid_id", lang), show_alert=True)

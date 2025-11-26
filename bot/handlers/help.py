@@ -5,7 +5,7 @@ from aiogram.filters import Command
 from aiogram.types import Message
 
 from bot.db import UserRepository
-from bot.db.database import get_db_session
+from bot.db.database import db_session
 from bot.utils.i18n import detect_lang, t
 from bot.utils.logging import get_logger
 
@@ -33,17 +33,15 @@ async def help_handler(message: Message):
     logger.info(f"Help command received from user {user_id} (@{username})")
 
     try:
-        db_session = await get_db_session()
-        if db_session:
-            try:
-                user_repo = UserRepository(db_session)
-                user = await user_repo.get_user_by_tg_id(user_id)
-                if user and user.language_code:
-                    lang = detect_lang(user.language_code)
-            except Exception as e:
-                logger.error(f"Failed to load user {user_id} for help lang: {e}")
-            finally:
-                await db_session.close()
+        async with db_session() as session:
+            if session:
+                try:
+                    user_repo = UserRepository(session)
+                    user = await user_repo.get_user_by_tg_id(user_id)
+                    if user and user.language_code:
+                        lang = detect_lang(user.language_code)
+                except Exception as e:
+                    logger.error(f"Failed to load user {user_id} for help lang: {e}")
 
         commands_list = t("start.commands_list", lang)
         tips = t("start.tips", lang)

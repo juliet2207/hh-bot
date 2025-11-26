@@ -1,6 +1,7 @@
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 from bot.utils.i18n import t
+from bot.utils.keyboards import back_button
 
 
 def search_settings_keyboard(filters: dict | None, lang: str) -> InlineKeyboardMarkup:
@@ -95,7 +96,7 @@ def employment_keyboard(current: str | None, lang: str) -> InlineKeyboardMarkup:
             )
         ]
     )
-    buttons.append([InlineKeyboardButton(text=t("profile.buttons.back", lang), callback_data="search_settings")])
+    buttons.append(back_button(t("profile.buttons.back", lang), "search_settings"))
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
 
@@ -131,5 +132,5 @@ def experience_keyboard(current: str | None, lang: str) -> InlineKeyboardMarkup:
             )
         ]
     )
-    rows.append([InlineKeyboardButton(text=t("profile.buttons.back", lang), callback_data="search_settings")])
+    rows.append(back_button(t("profile.buttons.back", lang), "search_settings"))
     return InlineKeyboardMarkup(inline_keyboard=rows)

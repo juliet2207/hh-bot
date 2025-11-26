@@ -3,13 +3,12 @@ import html
 from aiogram import F, Router, types
 from aiogram.fsm.context import FSMContext
 
-from bot.db.database import db_session
-from bot.db.user_repository import UserRepository
 from bot.handlers.profile.keyboards import llm_keyboard
 from bot.handlers.profile.states import EditProfile
 from bot.utils.i18n import detect_lang, t
 from bot.utils.lang import resolve_lang
 from bot.utils.logging import get_logger
+from bot.utils.profile_edit import is_clear_command, load_user, update_user_prefs
 from bot.utils.profile_helpers import hide_key
 
 logger = get_logger(__name__)
@@ -17,9 +16,7 @@ router = Router()
 
 
 async def send_llm_menu(message_obj: types.Message | types.CallbackQuery, tg_id: str, edit: bool = False):
-    async with db_session() as session:
-        repo = UserRepository(session)
-        user = await repo.get_user_by_tg_id(tg_id)
+    user = await load_user(tg_id)
 
     lang = detect_lang(
         user.language_code
@@ -91,10 +88,8 @@ async def save_llm(message: types.Message, state: FSMContext):
         await message.answer(t("profile.edit_llm_empty", lang))
         return
 
-    if llm_raw.lower() in {"clear", "удалить", "сбросить", "none", "null"}:
-        async with db_session() as session:
-            repo = UserRepository(session)
-            await repo.update_preferences(user_id, llm_settings=None)
+    if is_clear_command(llm_raw):
+        await update_user_prefs(user_id, llm_settings=None)
         await message.answer(t("profile.edit_llm_cleared", lang))
         await send_llm_menu(message, user_id)
         await state.clear()
@@ -106,9 +101,7 @@ async def save_llm(message: types.Message, state: FSMContext):
         await message.answer(t("profile.edit_llm_bad_format", lang), parse_mode="HTML")
         return
 
-    async with db_session() as session:
-        repo = UserRepository(session)
-        await repo.update_preferences(user_id, llm_settings={"model": model, "base_url": url, "api_key": key})
+    await update_user_prefs(user_id, llm_settings={"model": model, "base_url": url, "api_key": key})
 
     try:
         await message.delete()
