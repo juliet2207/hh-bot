@@ -42,14 +42,13 @@ async def send_search_settings(message_obj: types.Message | types.CallbackQuery,
 
     if isinstance(message_obj, types.CallbackQuery):
         try:
-            if edit:
-                await message_obj.message.edit_text(text, parse_mode="HTML", reply_markup=markup)
-            else:
-                await message_obj.message.answer(text, parse_mode="HTML", reply_markup=markup)
-        finally:
-            await message_obj.answer()
-    else:
-        await message_obj.answer(text, parse_mode="HTML", reply_markup=markup)
+            await message_obj.message.edit_text(text, parse_mode="HTML", reply_markup=markup)
+        except Exception as e:
+            logger.warning(f"Failed to edit search settings message for user {tg_id}: {e}")
+        await message_obj.answer()
+        return
+
+    await message_obj.answer(text, parse_mode="HTML", reply_markup=markup)
 
 
 @router.message(Command("search_settings"))

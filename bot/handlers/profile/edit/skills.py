@@ -1,6 +1,7 @@
 import html
 
 from aiogram import F, Router, types
+from aiogram.exceptions import TelegramBadRequest
 from aiogram.fsm.context import FSMContext
 
 from bot.db.database import get_db_session
@@ -9,12 +10,20 @@ from bot.handlers.profile.keyboards import skills_keyboard
 from bot.handlers.profile.states import EditProfile
 from bot.utils.i18n import detect_lang, t
 from bot.utils.lang import resolve_lang
+from bot.utils.logging import get_logger
 from bot.utils.profile_helpers import normalize_skills
 
+logger = get_logger(__name__)
 router = Router()
 
 
-async def send_skills_menu(message_obj: types.Message | types.CallbackQuery, tg_id: str, edit: bool = False):
+async def send_skills_menu(
+    message_obj: types.Message | types.CallbackQuery,
+    tg_id: str,
+    edit: bool = False,
+    chat_id: int | None = None,
+    message_id: int | None = None,
+):
     async with await get_db_session() as session:
         repo = UserRepository(session)
         user = await repo.get_user_by_tg_id(tg_id)
@@ -42,9 +51,43 @@ async def send_skills_menu(message_obj: types.Message | types.CallbackQuery, tg_
         skills_text = ", ".join(html.escape(skill) for skill in skills_list)
         text = t("profile.skills_menu", lang, count=len(skills_list), skills=f"<code>{skills_text}</code>")
 
+    bot = getattr(message_obj, "bot", None)
+
+    if message_id and bot and chat_id:
+        try:
+            await bot.edit_message_text(
+                text=text,
+                chat_id=chat_id,
+                message_id=message_id,
+                parse_mode="HTML",
+                reply_markup=markup,
+            )
+            if isinstance(message_obj, types.CallbackQuery):
+                await message_obj.answer()
+            return
+        except TelegramBadRequest as e:
+            if "not modified" in str(e):
+                if isinstance(message_obj, types.CallbackQuery):
+                    await message_obj.answer()
+                return
+            logger.debug(f"Failed to edit skills menu by id: {e}")
+        except Exception as e:
+            logger.debug(f"Failed to edit skills menu by id: {e}")
+
     if isinstance(message_obj, types.CallbackQuery) and edit:
-        await target.edit_text(text, parse_mode="HTML", reply_markup=markup)
-        await message_obj.answer()
+        try:
+            await target.edit_text(text, parse_mode="HTML", reply_markup=markup)
+        except TelegramBadRequest as e:
+            if "not modified" in str(e):
+                await message_obj.answer()
+                return
+            logger.debug(f"Failed to edit skills menu message: {e}")
+            await target.answer(text, parse_mode="HTML", reply_markup=markup)
+        except Exception as e:
+            logger.debug(f"Failed to edit skills menu message: {e}")
+            await target.answer(text, parse_mode="HTML", reply_markup=markup)
+        finally:
+            await message_obj.answer()
     else:
         await target.answer(text, parse_mode="HTML", reply_markup=markup)
         if isinstance(message_obj, types.CallbackQuery):
@@ -60,7 +103,13 @@ async def cb_skills_menu(call: types.CallbackQuery, state: FSMContext):
 @router.callback_query(F.data == "edit_skills")
 async def cb_edit_skills(call: types.CallbackQuery, state: FSMContext):
     lang = await resolve_lang(str(call.from_user.id), call.from_user.language_code if call.from_user else None)
-    await call.message.answer(t("profile.edit_skills_prompt", lang))
+    prompt = await call.message.answer(t("profile.edit_skills_prompt", lang))
+    await state.update_data(
+        skills_menu_chat_id=call.message.chat.id,
+        skills_prompt_chat_id=call.message.chat.id,
+        skills_prompt_message_id=prompt.message_id,
+        skills_menu_message_id=call.message.message_id,
+    )
     await state.set_state(EditProfile.skills)
     await call.answer()
 
@@ -80,6 +129,29 @@ async def save_skills(message: types.Message, state: FSMContext):
     user_id = str(message.from_user.id)
     lang = await resolve_lang(user_id, message.from_user.language_code if message.from_user else None)
 
+    state_data = await state.get_data()
+    prompt_chat_id = state_data.get("skills_prompt_chat_id")
+    prompt_message_id = state_data.get("skills_prompt_message_id")
+    menu_chat_id = state_data.get("skills_menu_chat_id")
+    menu_message_id = state_data.get("skills_menu_message_id")
+
+    async def _safe_delete(msg: types.Message | None):
+        if not msg:
+            return
+        try:
+            await msg.delete()
+        except Exception as e:
+            logger.debug(f"Failed to delete helper message during skills update: {e}")
+
+    async def _delete_prompt():
+        if prompt_message_id and (prompt_chat_id or menu_chat_id):
+            try:
+                await message.bot.delete_message(
+                    chat_id=prompt_chat_id or menu_chat_id or message.chat.id, message_id=prompt_message_id
+                )
+            except Exception as e:
+                logger.debug(f"Failed to delete skills prompt message: {e}")
+
     if not skills_input:
         await message.answer(t("profile.edit_skills_empty", lang))
         return
@@ -88,8 +160,17 @@ async def save_skills(message: types.Message, state: FSMContext):
         async with await get_db_session() as session:
             repo = UserRepository(session)
             await repo.update_preferences(user_id, skills=None)
-        await message.answer(t("profile.edit_skills_cleared", lang))
-        await send_skills_menu(message, user_id)
+        confirm = await message.answer(t("profile.edit_skills_cleared", lang))
+        await send_skills_menu(
+            message,
+            user_id,
+            edit=True,
+            chat_id=menu_chat_id or message.chat.id,
+            message_id=menu_message_id,
+        )
+        await _safe_delete(message)
+        await _delete_prompt()
+        await _safe_delete(confirm)
         await state.clear()
         return
 
@@ -102,6 +183,16 @@ async def save_skills(message: types.Message, state: FSMContext):
         repo = UserRepository(session)
         await repo.update_preferences(user_id, skills=skills)
 
-    await message.answer(t("profile.edit_skills_updated", lang))
-    await send_skills_menu(message, user_id)
+    confirm = await message.answer(t("profile.edit_skills_updated", lang))
+    await send_skills_menu(
+        message,
+        user_id,
+        edit=True,
+        chat_id=menu_chat_id or message.chat.id,
+        message_id=menu_message_id,
+    )
+
+    await _safe_delete(message)
+    await _delete_prompt()
+    await _safe_delete(confirm)
     await state.clear()

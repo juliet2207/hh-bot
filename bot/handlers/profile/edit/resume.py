@@ -1,6 +1,7 @@
 import html
 
 from aiogram import F, Router, types
+from aiogram.exceptions import TelegramBadRequest
 from aiogram.fsm.context import FSMContext
 
 from bot.db.database import get_db_session
@@ -9,11 +10,19 @@ from bot.handlers.profile.keyboards import resume_keyboard
 from bot.handlers.profile.states import EditProfile
 from bot.utils.i18n import detect_lang, t
 from bot.utils.lang import resolve_lang
+from bot.utils.logging import get_logger
 
+logger = get_logger(__name__)
 router = Router()
 
 
-async def send_resume_menu(message_obj: types.Message | types.CallbackQuery, tg_id: str, edit: bool = False):
+async def send_resume_menu(
+    message_obj: types.Message | types.CallbackQuery,
+    tg_id: str,
+    edit: bool = False,
+    chat_id: int | None = None,
+    message_id: int | None = None,
+):
     async with await get_db_session() as session:
         repo = UserRepository(session)
         user = await repo.get_user_by_tg_id(tg_id)
@@ -24,6 +33,7 @@ async def send_resume_menu(message_obj: types.Message | types.CallbackQuery, tg_
         else (message_obj.from_user.language_code if message_obj.from_user else None)
     )
     target = message_obj.message if isinstance(message_obj, types.CallbackQuery) else message_obj
+    bot = getattr(message_obj, "bot", None)
 
     if not user:
         await target.answer(t("profile.no_profile", lang))
@@ -41,9 +51,41 @@ async def send_resume_menu(message_obj: types.Message | types.CallbackQuery, tg_
     else:
         text = t("profile.resume_menu_empty", lang)
 
+    if message_id and bot and chat_id:
+        try:
+            await bot.edit_message_text(
+                text=text,
+                chat_id=chat_id,
+                message_id=message_id,
+                parse_mode="HTML",
+                reply_markup=markup,
+            )
+            if isinstance(message_obj, types.CallbackQuery):
+                await message_obj.answer()
+            return
+        except TelegramBadRequest as e:
+            if "not modified" in str(e):
+                if isinstance(message_obj, types.CallbackQuery):
+                    await message_obj.answer()
+                return
+            logger.debug(f"Failed to edit resume menu by id: {e}")
+        except Exception as e:
+            logger.debug(f"Failed to edit resume menu by id: {e}")
+
     if isinstance(message_obj, types.CallbackQuery) and edit:
-        await target.edit_text(text, parse_mode="HTML", reply_markup=markup)
-        await message_obj.answer()
+        try:
+            await target.edit_text(text, parse_mode="HTML", reply_markup=markup)
+        except TelegramBadRequest as e:
+            if "not modified" in str(e):
+                await message_obj.answer()
+                return
+            logger.debug(f"Failed to edit resume menu message: {e}")
+            await target.answer(text, parse_mode="HTML", reply_markup=markup)
+        except Exception as e:
+            logger.debug(f"Failed to edit resume menu message: {e}")
+            await target.answer(text, parse_mode="HTML", reply_markup=markup)
+        finally:
+            await message_obj.answer()
     else:
         await target.answer(text, parse_mode="HTML", reply_markup=markup)
         if isinstance(message_obj, types.CallbackQuery):
@@ -59,7 +101,12 @@ async def cb_resume_menu(call: types.CallbackQuery, state: FSMContext):
 @router.callback_query(F.data.in_({"resume_edit", "edit_resume"}))
 async def cb_edit_resume(call: types.CallbackQuery, state: FSMContext):
     lang = await resolve_lang(str(call.from_user.id), call.from_user.language_code if call.from_user else None)
-    await call.message.answer(t("profile.edit_resume_prompt", lang))
+    prompt = await call.message.answer(t("profile.edit_resume_prompt", lang))
+    await state.update_data(
+        resume_prompt_chat_id=call.message.chat.id,
+        resume_prompt_message_id=prompt.message_id,
+        resume_menu_message_id=call.message.message_id,
+    )
     await state.set_state(EditProfile.resume)
     await call.answer()
 
@@ -71,6 +118,29 @@ async def cb_resume_back_profile(call: types.CallbackQuery, state: FSMContext):
 
     await send_profile_view(str(call.from_user.id), call.message, edit=True)
     await call.answer()
+
+
+async def _safe_delete(message: types.Message | None, context_state: FSMContext | None = None):
+    if not message:
+        return
+    try:
+        await message.delete()
+    except Exception as e:
+        logger.debug(f"Failed to delete helper message during resume update: {e}")
+
+
+async def _cleanup_messages(message: types.Message, state: FSMContext):
+    state_data = await state.get_data()
+    prompt_chat_id = state_data.get("resume_prompt_chat_id")
+    prompt_message_id = state_data.get("resume_prompt_message_id")
+
+    await _safe_delete(message, state)
+
+    if prompt_message_id and prompt_chat_id:
+        try:
+            await message.bot.delete_message(chat_id=prompt_chat_id, message_id=prompt_message_id)
+        except Exception as e:
+            logger.debug(f"Failed to delete resume prompt message: {e}")
 
 
 @router.message(EditProfile.resume)
@@ -87,8 +157,17 @@ async def save_resume(message: types.Message, state: FSMContext):
         async with await get_db_session() as session:
             repo = UserRepository(session)
             await repo.update_preferences(user_id, resume=None)
-        await message.answer(t("profile.edit_resume_cleared", lang))
-        await send_resume_menu(message, user_id)
+        confirm = await message.answer(t("profile.edit_resume_cleared", lang))
+        state_data = await state.get_data()
+        await send_resume_menu(
+            message,
+            user_id,
+            edit=True,
+            chat_id=state_data.get("resume_menu_chat_id") or message.chat.id,
+            message_id=state_data.get("resume_menu_message_id"),
+        )
+        await _cleanup_messages(message, state)
+        await _safe_delete(confirm, state)
         await state.clear()
         return
 
@@ -96,6 +175,15 @@ async def save_resume(message: types.Message, state: FSMContext):
         repo = UserRepository(session)
         await repo.update_preferences(user_id, resume=resume_text)
 
-    await message.answer(t("profile.edit_resume_updated", lang))
-    await send_resume_menu(message, user_id)
+    confirm = await message.answer(t("profile.edit_resume_updated", lang))
+    state_data = await state.get_data()
+    await send_resume_menu(
+        message,
+        user_id,
+        edit=True,
+        chat_id=state_data.get("resume_menu_chat_id") or message.chat.id,
+        message_id=state_data.get("resume_menu_message_id"),
+    )
+    await _cleanup_messages(message, state)
+    await _safe_delete(confirm, state)
     await state.clear()

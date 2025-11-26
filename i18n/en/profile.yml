@@ -3,8 +3,6 @@ profile:
   view: |
     <b>Your Profile</b>
 
-    <b>Telegram ID:</b> {tg_id}
-    <b>Username:</b> {username}
     <b>Name:</b> {name}
     <b>City:</b> {city}
     <b>Desired Position:</b> {desired_position}
@@ -23,6 +21,8 @@ profile:
   resume_menu_empty: "<b>Resume</b>\nNot added yet. Tap Edit to save it."
   edit_cancelled: 'Edit cancelled.'
   edit_city_prompt: "Send your new city (or type 'clear' to remove it):"
+  edit_city_menu: "<b>City: {current_city}</b>\nPick one of recent cities or type a new one:"
+  edit_city_menu_empty: "<b>City: {current_city}</b>\nNo recent cities yet. Send a city name."
   edit_city_empty: 'City name cannot be empty. Please send it again.'
   edit_city_lookup: "🔍 Looking up city '{city}'..."
   edit_city_not_found: "❌ City '{city}' not found. Please check the spelling and try again."
@@ -92,6 +92,7 @@ profile:
     edit_skills: '✏️ Edit Skills'
     edit_resume: '📄 Resume'
     resume_edit: '✏️ Edit Resume'
+    city_enter: '✏️ Enter city'
     llm_settings: '🤖 LLM Settings'
     llm_edit: '✏️ Edit LLM'
     search_settings: '🔎 Search Settings'
