@@ -4,10 +4,12 @@ from aiogram import Router, types
 from aiogram.filters import Command
 
 from bot.db.database import get_db_session
+from bot.db.search_query_repository import SearchQueryRepository
 from bot.db.user_repository import UserRepository
-from bot.handlers.profile.common import format_search_filters, hide_key, profile_keyboard, short
+from bot.handlers.profile.keyboards import profile_keyboard
 from bot.utils.i18n import detect_lang, t
 from bot.utils.logging import get_logger
+from bot.utils.profile_helpers import format_search_filters, hide_key, short
 
 logger = get_logger(__name__)
 router = Router()
@@ -40,6 +42,15 @@ async def send_profile_view(tg_id: str, message_obj: types.Message):
     username = f"@{html.escape(user.username)}" if user.username else "not set"
     name = f"{html.escape(user.first_name or '')} {html.escape(user.last_name or '')}".strip()
     search_filters_text = format_search_filters(search_filters, lang)
+    last_search = t("profile.not_set", lang)
+    try:
+        async with await get_db_session() as session:
+            sq_repo = SearchQueryRepository(session)
+            latest = await sq_repo.get_latest_search_query_any(user.id)
+            if latest and latest.query_text:
+                last_search = html.escape(latest.query_text)
+    except Exception as e:
+        logger.warning(f"Failed to load last search for user {user.id}: {e}")
 
     text = t(
         "profile.view",
@@ -51,6 +62,7 @@ async def send_profile_view(tg_id: str, message_obj: types.Message):
         desired_position=desired_position,
         skills=skills,
         resume=short(prefs.get("resume"), lang),
+        last_search=last_search,
         search_filters=search_filters_text,
         llm_model=llm_model,
         llm_url=llm_url,

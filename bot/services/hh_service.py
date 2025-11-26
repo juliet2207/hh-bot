@@ -71,7 +71,7 @@ class HHService:
             remote_only: If True, filter only remote jobs
             freshness_days: Only vacancies published in last N days (HH 'period' param)
             employment: Employment type (full, part, project, volunteer, probation)
-            experience: Experience level (no_experience, between1And3, between3And6, moreThan6)
+            experience: Experience level (noExperience, between1And3, between3And6, moreThan6)
         """
         if not self.session:
             hh_logger.error("HTTP session not initialized")

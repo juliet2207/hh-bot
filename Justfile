@@ -2,14 +2,26 @@
 set shell := ["bash", "-cu"]
 set quiet := true
 
+# The list of just actions
+list:
+	just --list
+
 # Format, lint, and validate i18n in one go
 check:
 	uv run ruff format
 	uv run ruff check
 	uv run tools/i18n/check_i18n.py
 
+# Alembic up migrations
+migrate target="head":
+	uv run alembic upgrade {{target}}
+
+# Alembic down migrations
+migrate-down target="-1":
+	uv run alembic downgrade {{target}}
+
 # Start the bot, preferring an active virtualenv, then .venv, otherwise uv
-start:
+run:
 	@if [ -n "${VIRTUAL_ENV-}" ]; then \
 		uv run main.py; \
 	elif [ -d ".venv" ]; then \

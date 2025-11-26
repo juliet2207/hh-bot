@@ -1,5 +1,7 @@
 """Handler for regular messages (non-command)"""
 
+import html
+
 from aiogram import Router
 from aiogram.types import Message
 
@@ -13,10 +15,20 @@ from bot.utils.search import (
     perform_search,
     store_search_results,
 )
+from bot.utils.text import suggest_command
 
 logger = get_logger(__name__)
 
 router = Router()
+
+KNOWN_COMMANDS = {
+    "/start",
+    "/help",
+    "/profile",
+    "/preferences",
+    "/search",
+    "/resume",
+}
 
 
 def register_echo_handlers(router_instance: Router):
@@ -35,38 +47,52 @@ async def echo_handler(message: Message):
     username = message.from_user.username or "N/A"
     text = message.text or "[non-text message]"
     lang = detect_lang(message.from_user.language_code if message.from_user else None)
+    user_obj = None
+    user_db_id = None
 
     logger.info(f"Message received from user {user_id} (@{username}): '{text[:50]}{'...' if len(text) > 50 else ''}'")
 
     try:
+        # Resolve user and language preference up front
+        db_session = await get_db_session()
+        if db_session:
+            try:
+                user_repo = UserRepository(db_session)
+                user_obj = await user_repo.get_or_create_user(
+                    tg_user_id=user_id,
+                    username=message.from_user.username,
+                    first_name=message.from_user.first_name,
+                    last_name=message.from_user.last_name,
+                    language_code=message.from_user.language_code,
+                )
+                user_db_id = user_obj.id
+                lang = detect_lang(user_obj.language_code)
+            except Exception as e:
+                logger.error(f"Failed to get user {user_id} from database: {e}")
+            finally:
+                await db_session.close()
+
+        stripped = text.strip()
+        if stripped.startswith("/"):
+            nearest = suggest_command(stripped, lang)
+            if nearest:
+                await message.answer(
+                    t("search.unknown_command_suggest", lang).format(
+                        original=html.escape(stripped),
+                        suggestion=nearest,
+                    ),
+                    parse_mode="HTML",
+                )
+                return
+            await message.answer(t("search.unknown_command", lang))
+            return
+
         # For non-command messages, treat them as search queries
-        if text.strip() and not text.startswith("/"):
+        if stripped:
             # Check if HH service is available
             if not hh_service.session:
                 await message.answer(t("search.service_unavailable", lang))
                 return
-
-            # Get user from database to get user ID
-            db_session = await get_db_session()
-            user_db_id = None
-            user_obj = None
-            if db_session:
-                try:
-                    user_repo = UserRepository(db_session)
-                    user = await user_repo.get_or_create_user(
-                        tg_user_id=user_id,
-                        username=message.from_user.username,
-                        first_name=message.from_user.first_name,
-                        last_name=message.from_user.last_name,
-                        language_code=message.from_user.language_code,
-                    )
-                    user_db_id = user.id
-                    user_obj = user
-                    lang = detect_lang(user.language_code)
-                except Exception as e:
-                    logger.error(f"Failed to get user {user_id} from database: {e}")
-                finally:
-                    await db_session.close()
 
             logger.debug(f"Treating message as search query for user {user_id}")
             prefs = user_obj.preferences if user_obj and user_obj.preferences else {}

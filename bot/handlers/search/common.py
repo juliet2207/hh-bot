@@ -3,6 +3,7 @@ import html
 from aiogram.exceptions import TelegramBadRequest
 from aiogram.types import InlineKeyboardMarkup
 
+from bot.db import CVType
 from bot.utils.i18n import t
 from bot.utils.logging import get_logger
 from bot.utils.search import create_pagination_keyboard, create_vacancy_buttons
@@ -25,11 +26,18 @@ def build_search_keyboard(query: str, page: int, total_pages: int, per_page: int
 
 
 def format_cv_header(vacancy: dict, lang: str) -> tuple[str, str]:
+    return format_document_header(vacancy, lang, CVType.CV)
+
+
+def format_document_header(vacancy: dict, lang: str, doc_type: CVType) -> tuple[str, str]:
     url = vacancy.get("alternate_url", "https://hh.ru")
     employer = vacancy.get("employer", {}) if isinstance(vacancy.get("employer"), dict) else {}
     company = employer.get("name") if isinstance(employer, dict) else None
     company_safe = html.escape(company) if company else t("search.common.vacancy_placeholder", lang)
-    link_text = t("search.vacancy_detail.cv_header", lang).format(company=company_safe)
+    header_key = (
+        "search.vacancy_detail.cv_header" if doc_type == CVType.CV else "search.vacancy_detail.cover_letter_header"
+    )
+    link_text = t(header_key, lang).format(company=company_safe)
     header = f'📄 <a href="{url}">{link_text}</a>:'
     return header, url
 

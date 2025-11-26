@@ -1,4 +1,4 @@
-from sqlalchemy import JSON, Boolean, Column, DateTime, Integer, String, Text
+from sqlalchemy import JSON, Boolean, Column, DateTime, Index, Integer, String, Text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.sql import func
 
@@ -70,9 +70,11 @@ class UserSearchResult(Base):
 
 class CV(Base):
     __tablename__ = "cv"
+    __table_args__ = (Index("ix_cv_user_vacancy_type", "user_id", "vacancy_id", "type"),)
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(Integer, nullable=False, index=True)
     vacancy_id = Column(Integer, nullable=False, index=True)
+    type = Column(Integer, nullable=False, default=0, server_default="0")  # 0=CV, 1=cover letter
     text = Column(Text, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())

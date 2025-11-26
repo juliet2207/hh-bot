@@ -13,6 +13,8 @@ profile:
     <b>Resume:</b>
     {resume}
 
+    <b>The Last Search:</b> {last_search}
+
     <b>Search Settings:</b>
     {search_filters}
 
@@ -52,16 +54,10 @@ profile:
   edit_llm_cleared: 'LLM settings removed.'
   edit_llm_updated: 'LLM settings updated.'
   llm_delete_warning: 'Failed to delete message with LLM settings.'
-  preferences_view: "Language: {language}\n\nLLM global prompt (applies to CV generation):\n{prompt}"
-  preferences_prompt: 'Send global LLM prompt (used for CV generation).'
-  preferences_cleared: 'LLM prompt cleared.'
-  preferences_saved: 'LLM prompt saved.'
-  preferences_empty: 'Prompt cannot be empty. Please send it again or type cancel.'
+  preferences_view: 'Language: {language}'
   preferences_lang_prompt: 'Choose bot language:'
   preferences_lang_saved: 'Language updated to {language}.'
   preferences_lang_invalid: 'Unsupported language.'
-  prompt_header: '<b>LLM Prompt</b>'
-  prompt_missing: 'No LLM prompt saved. Use /preferences to set it.'
   search_filters:
     min_salary: '- Min salary: {value}'
     remote: '- Remote only: {state}'
@@ -71,13 +67,15 @@ profile:
   on: 'On'
   on_tick: 'On ✅'
   off: 'Off'
-  not_set: 'not set'
+  not_set: 'Not set'
   resume_truncated: "…\n\n<b>[Use /resume to view full]</b>"
-  prompt_truncated: "…\n\n<b>[Prompt is too long — send /prompt to view full]</b>"
   buttons:
     set_salary: '💰 Set Min Salary'
     remote: '🏠 Remote: {state}'
-    fresh_off: '⏳ Freshness off'
+    fresh_off: '⏳ ♾️'
+    fresh_1d: '1 d'
+    fresh_2d: '2 d'
+    fresh_3d: '3 d'
     employment: '📌 Employment'
     experience: '📈 Experience'
     clear_filters: '🧹 Clear Filters'
@@ -85,8 +83,6 @@ profile:
     clear_employment: '🧹 Clear employment'
     clear_experience: '🧹 Clear experience'
     back: '⬅️ Back'
-    edit_llm_prompt: '🧠 Edit LLM Prompt'
-    clear_llm_prompt: '🧽 Clear LLM Prompt'
     change_language: '🌐 Change language'
     edit_city: '🏙️ Edit City'
     edit_position: '🎯 Edit Position'
@@ -99,6 +95,17 @@ profile:
   languages:
     en: 'English'
     ru: 'Russian'
+  employment:
+    full: 'Full-time'
+    part: 'Part-time'
+    project: 'Project-based'
+    volunteer: 'Volunteer'
+    probation: 'Internship'
+  experience:
+    noExperience: 'No experience'
+    between1And3: '1–3 years'
+    between3And6: '3–6 years'
+    moreThan6: 'More than 6 years'
   search_settings_title: "<b>Search Settings</b>\n\n{filters}\n\nChoose what to change:"
   search_set_salary_prompt: "Send minimum salary (number). Use 'clear' to remove."
   search_salary_invalid: "Please send only digits for salary (or 'clear')."

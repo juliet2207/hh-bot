@@ -4,16 +4,12 @@ from aiogram.fsm.context import FSMContext
 
 from bot.db.database import get_db_session
 from bot.db.user_repository import UserRepository
-from bot.handlers.profile.common import (
-    EditSearchFilters,
-    employment_keyboard,
-    experience_keyboard,
-    format_search_filters,
-    search_settings_keyboard,
-)
+from bot.handlers.profile.keyboards import employment_keyboard, experience_keyboard, search_settings_keyboard
+from bot.handlers.profile.states import EditSearchFilters
 from bot.handlers.profile.view import send_profile_view
 from bot.utils.i18n import detect_lang, t
 from bot.utils.logging import get_logger
+from bot.utils.profile_helpers import format_search_filters
 
 logger = get_logger(__name__)
 router = Router()
@@ -27,17 +23,20 @@ async def get_search_filters(tg_id: str) -> dict:
         return prefs.get("search_filters", {})
 
 
+async def get_user_and_lang(tg_id: str, fallback_lang_code: str | None = None):
+    async with await get_db_session() as session:
+        repo = UserRepository(session)
+        user = await repo.get_user_by_tg_id(tg_id)
+    lang = detect_lang(user.language_code if user and user.language_code else fallback_lang_code)
+    return user, lang
+
+
 async def send_search_settings(message_obj: types.Message | types.CallbackQuery, tg_id: str, edit: bool = False):
-    filters = await get_search_filters(tg_id)
-    lang = detect_lang(
-        (
-            message_obj.from_user.language_code
-            if isinstance(message_obj, types.Message) and message_obj.from_user
-            else None
-        )
-        if not isinstance(message_obj, types.CallbackQuery)
-        else (message_obj.from_user.language_code if message_obj.from_user else None)
+    user, lang = await get_user_and_lang(
+        tg_id,
+        message_obj.from_user.language_code if message_obj.from_user else None,
     )
+    filters = (user.preferences or {}).get("search_filters", {}) if user else {}
     text = t("profile.search_settings_title", lang).format(filters=format_search_filters(filters, lang))
     markup = search_settings_keyboard(filters, lang)
 
@@ -74,7 +73,7 @@ async def cb_search_back_profile(call: types.CallbackQuery, state: FSMContext):
 
 @router.callback_query(F.data == "search_set_salary")
 async def cb_search_set_salary(call: types.CallbackQuery, state: FSMContext):
-    lang = detect_lang(call.from_user.language_code if call.from_user else None)
+    _, lang = await get_user_and_lang(str(call.from_user.id), call.from_user.language_code if call.from_user else None)
     await call.message.answer(t("profile.search_set_salary_prompt", lang))
     await state.set_state(EditSearchFilters.min_salary)
     await call.answer()
@@ -84,7 +83,7 @@ async def cb_search_set_salary(call: types.CallbackQuery, state: FSMContext):
 async def save_min_salary(message: types.Message, state: FSMContext):
     raw = (message.text or "").strip()
     user_id = str(message.from_user.id)
-    lang = detect_lang(message.from_user.language_code if message.from_user else None)
+    _, lang = await get_user_and_lang(user_id, message.from_user.language_code if message.from_user else None)
 
     if raw.lower() in {"clear", "удалить", "сбросить", "none", "null"}:
         value = None
@@ -133,14 +132,15 @@ async def cb_set_freshness(call: types.CallbackQuery, state: FSMContext):
 
 @router.callback_query(F.data == "search_employment_menu")
 async def cb_employment_menu(call: types.CallbackQuery, state: FSMContext):
-    filters = await get_search_filters(str(call.from_user.id))
+    user, lang = await get_user_and_lang(
+        str(call.from_user.id), call.from_user.language_code if call.from_user else None
+    )
+    filters = (user.preferences or {}).get("search_filters", {}) if user else {}
     current = filters.get("employment")
     await call.message.edit_text(
-        t("profile.search_employment_title", detect_lang(call.from_user.language_code if call.from_user else None)),
+        t("profile.search_employment_title", lang),
         parse_mode="HTML",
-        reply_markup=employment_keyboard(
-            current, detect_lang(call.from_user.language_code if call.from_user else None)
-        ),
+        reply_markup=employment_keyboard(current, lang),
     )
     await call.answer()
 
@@ -160,14 +160,15 @@ async def cb_set_employment(call: types.CallbackQuery, state: FSMContext):
 
 @router.callback_query(F.data == "search_experience_menu")
 async def cb_experience_menu(call: types.CallbackQuery, state: FSMContext):
-    filters = await get_search_filters(str(call.from_user.id))
+    user, lang = await get_user_and_lang(
+        str(call.from_user.id), call.from_user.language_code if call.from_user else None
+    )
+    filters = (user.preferences or {}).get("search_filters", {}) if user else {}
     current = filters.get("experience")
     await call.message.edit_text(
-        t("profile.search_experience_title", detect_lang(call.from_user.language_code if call.from_user else None)),
+        t("profile.search_experience_title", lang),
         parse_mode="HTML",
-        reply_markup=experience_keyboard(
-            current, detect_lang(call.from_user.language_code if call.from_user else None)
-        ),
+        reply_markup=experience_keyboard(current, lang),
     )
     await call.answer()
 
