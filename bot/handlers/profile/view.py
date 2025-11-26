@@ -9,13 +9,13 @@ from bot.db.user_repository import UserRepository
 from bot.handlers.profile.keyboards import profile_keyboard
 from bot.utils.i18n import detect_lang, t
 from bot.utils.logging import get_logger
-from bot.utils.profile_helpers import build_skills_preview, format_search_filters, short
+from bot.utils.profile_helpers import build_skills_preview, format_search_filters, resume_preview
 
 logger = get_logger(__name__)
 router = Router()
 
 
-async def send_profile_view(tg_id: str, message_obj: types.Message):
+async def send_profile_view(tg_id: str, message_obj: types.Message, edit: bool = False):
     async with await get_db_session() as session:
         repo = UserRepository(session)
         user = await repo.get_user_by_tg_id(tg_id)
@@ -58,12 +58,21 @@ async def send_profile_view(tg_id: str, message_obj: types.Message):
         city=city,
         desired_position=desired_position,
         skills=skills,
-        resume=short(prefs.get("resume"), lang),
+        resume=resume_preview(prefs.get("resume"), lang),
         last_search=last_search,
         search_filters=search_filters_text,
     )
 
-    await message_obj.answer(text, parse_mode="HTML", reply_markup=profile_keyboard(lang, skills_count, skills_preview))
+    markup = profile_keyboard(lang, skills_count, skills_preview)
+
+    if edit:
+        try:
+            await message_obj.edit_text(text, parse_mode="HTML", reply_markup=markup)
+            return
+        except Exception as e:
+            logger.debug(f"Failed to edit profile message for user {tg_id}: {e}")
+
+    await message_obj.answer(text, parse_mode="HTML", reply_markup=markup)
 
 
 @router.message(Command("profile"))
@@ -92,7 +101,4 @@ async def cmd_resume(message: types.Message):
         await message.answer(t("profile.resume_missing", lang))
         return
 
-    await message.answer(
-        f"{t('profile.resume_header', lang)}\n\n" + html.escape(resume),
-        parse_mode="HTML",
-    )
+    await message.answer(f"{t('profile.resume_header', lang)}\n\n<code>{html.escape(resume)}</code>", parse_mode="HTML")

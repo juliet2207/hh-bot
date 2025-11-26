@@ -68,6 +68,27 @@ def build_skills_preview(skills: list[str] | None, max_items: int = 5) -> tuple[
     return count, preview
 
 
+def resume_preview(text: str | None, lang: str, max_lines: int = 5) -> str:
+    if not text:
+        return t("profile.not_set", lang)
+
+    normalized = text.strip().replace("\r\n", "\n")
+    paragraph_lines: list[str] = []
+    for line in normalized.split("\n"):
+        if not line.strip():
+            break
+        paragraph_lines.append(line)
+
+    if not paragraph_lines:
+        paragraph_lines = normalized.split("\n")[:max_lines]
+
+    escaped = [html.escape(line) for line in paragraph_lines]
+    preview = "\n".join(escaped)
+    if len(paragraph_lines) < len(normalized.split("\n")):
+        preview += "\n…"
+    return preview
+
+
 def format_search_filters(filters: dict | None, lang: str) -> str:
     filters = filters or {}
     min_salary = filters.get("min_salary")

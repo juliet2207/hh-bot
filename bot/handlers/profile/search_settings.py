@@ -67,7 +67,7 @@ async def cb_search_settings(call: types.CallbackQuery, state: FSMContext):
 async def cb_search_back_profile(call: types.CallbackQuery, state: FSMContext):
     await state.clear()
     tg_id = str(call.from_user.id)
-    await send_profile_view(tg_id, call.message)
+    await send_profile_view(tg_id, call.message, edit=True)
     await call.answer()
 
 

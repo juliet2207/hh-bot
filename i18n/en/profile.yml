@@ -19,6 +19,8 @@ profile:
     {search_filters}
   resume_header: '<b>Your Resume</b>'
   resume_missing: 'No resume saved yet. Use profile settings to add it.'
+  resume_menu: "<b>Resume</b>\n{resume}"
+  resume_menu_empty: "<b>Resume</b>\nNot added yet. Tap Edit to save it."
   edit_cancelled: 'Edit cancelled.'
   edit_city_prompt: "Send your new city (or type 'clear' to remove it):"
   edit_city_empty: 'City name cannot be empty. Please send it again.'
@@ -88,7 +90,8 @@ profile:
     edit_name: '🪪 Edit Name'
     skills_menu: '🛠️ Skills'
     edit_skills: '✏️ Edit Skills'
-    edit_resume: '📄 Edit Resume'
+    edit_resume: '📄 Resume'
+    resume_edit: '✏️ Edit Resume'
     llm_settings: '🤖 LLM Settings'
     llm_edit: '✏️ Edit LLM'
     search_settings: '🔎 Search Settings'

@@ -63,7 +63,7 @@ async def cb_prefs_back_profile(call: types.CallbackQuery, state: FSMContext):
     await state.clear()
     from bot.handlers.profile.view import send_profile_view
 
-    await send_profile_view(str(call.from_user.id), call.message)
+    await send_profile_view(str(call.from_user.id), call.message, edit=True)
     await call.answer()
 
 

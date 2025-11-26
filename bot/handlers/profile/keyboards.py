@@ -168,6 +168,20 @@ def skills_keyboard(lang: str) -> InlineKeyboardMarkup:
     )
 
 
+def resume_keyboard(lang: str) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text=t("profile.buttons.resume_edit", lang),
+                    callback_data="resume_edit",
+                )
+            ],
+            [InlineKeyboardButton(text=t("profile.buttons.back_profile", lang), callback_data="resume_back_profile")],
+        ]
+    )
+
+
 def llm_keyboard(lang: str) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[
@@ -200,7 +214,7 @@ def profile_keyboard(lang: str, skills_count: int = 0, skills_preview: str | Non
             [
                 InlineKeyboardButton(
                     text=t("profile.buttons.edit_resume", lang),
-                    callback_data="edit_resume",
+                    callback_data="resume_menu",
                 ),
                 InlineKeyboardButton(
                     text=t("profile.buttons.llm_settings", lang),
