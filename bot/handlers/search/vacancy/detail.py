@@ -23,7 +23,11 @@ async def vacancy_detail_handler(callback: CallbackQuery):
     try:
         parts = callback.data.split(":", 2)
         if len(parts) != 3:
-            await safe_answer(callback, text=t("search.vacancy_detail.invalid_request", lang), show_alert=True)
+            await safe_answer(
+                callback,
+                text=t("search.vacancy_detail.invalid_request", lang),
+                show_alert=True,
+            )
             return
 
         query = parts[1]
@@ -33,16 +37,26 @@ async def vacancy_detail_handler(callback: CallbackQuery):
         user_db_id = user_obj.id if user_obj else None
 
         if not user_db_id:
-            await safe_answer(callback, text=t("search.vacancy_detail.user_not_found", lang), show_alert=True)
+            await safe_answer(
+                callback,
+                text=t("search.vacancy_detail.user_not_found", lang),
+                show_alert=True,
+            )
             return
 
         vacancies, total_found = await get_vacancies_from_db(user_db_id, query)
         if not vacancies or idx < 0 or idx >= len(vacancies):
-            await safe_answer(callback, text=t("search.vacancy_detail.not_found", lang), show_alert=True)
+            await safe_answer(
+                callback,
+                text=t("search.vacancy_detail.not_found", lang),
+                show_alert=True,
+            )
             return
 
         vacancy = vacancies[idx]
-        detail_text = format_vacancy_details(vacancy, idx + 1, total_found or len(vacancies), lang)
+        detail_text = format_vacancy_details(
+            vacancy, idx + 1, total_found or len(vacancies), lang
+        )
         page = idx // VACANCIES_PER_PAGE
         vacancy_db_id = await ensure_vacancy_db_id(vacancy)
 
@@ -57,7 +71,9 @@ async def vacancy_detail_handler(callback: CallbackQuery):
                     try:
                         cv_repo = CVRepository(session)
                         cv = await cv_repo.get_cv(user_db_id, vacancy_db_id, CVType.CV)
-                        cover_letter = await cv_repo.get_cv(user_db_id, vacancy_db_id, CVType.COVER_LETTER)
+                        cover_letter = await cv_repo.get_cv(
+                            user_db_id, vacancy_db_id, CVType.COVER_LETTER
+                        )
                     except Exception as e:
                         logger.error(
                             f"Failed to fetch CV/cover cache for user {user_db_id}, vacancy {vacancy_db_id}: {e}"
@@ -65,7 +81,11 @@ async def vacancy_detail_handler(callback: CallbackQuery):
 
             if cv:
                 cv_preview = (cv.text[:400] + "…") if len(cv.text) > 400 else cv.text
-                preview_blocks.append(t("search.vacancy_detail.cached_preview", lang).format(preview=cv_preview))
+                preview_blocks.append(
+                    t("search.vacancy_detail.cached_preview", lang).format(
+                        preview=cv_preview
+                    )
+                )
                 cv_buttons.append(
                     InlineKeyboardButton(
                         text=t("search.vacancy_detail.buttons.send_cv", lang),
@@ -87,9 +107,15 @@ async def vacancy_detail_handler(callback: CallbackQuery):
                 )
 
             if cover_letter:
-                cover_preview = (cover_letter.text[:400] + "…") if len(cover_letter.text) > 400 else cover_letter.text
+                cover_preview = (
+                    (cover_letter.text[:400] + "…")
+                    if len(cover_letter.text) > 400
+                    else cover_letter.text
+                )
                 preview_blocks.append(
-                    t("search.vacancy_detail.cached_cover_preview", lang).format(preview=cover_preview)
+                    t("search.vacancy_detail.cached_cover_preview", lang).format(
+                        preview=cover_preview
+                    )
                 )
                 cover_buttons.append(
                     InlineKeyboardButton(
@@ -99,14 +125,19 @@ async def vacancy_detail_handler(callback: CallbackQuery):
                 )
                 cover_buttons.append(
                     InlineKeyboardButton(
-                        text=t("search.vacancy_detail.buttons.regenerate_cover_letter", lang),
+                        text=t(
+                            "search.vacancy_detail.buttons.regenerate_cover_letter",
+                            lang,
+                        ),
                         callback_data=f"vacancy_doc:cover:{query}:{idx}:regen",
                     )
                 )
             else:
                 cover_buttons.append(
                     InlineKeyboardButton(
-                        text=t("search.vacancy_detail.buttons.generate_cover_letter", lang),
+                        text=t(
+                            "search.vacancy_detail.buttons.generate_cover_letter", lang
+                        ),
                         callback_data=f"vacancy_doc:cover:{query}:{idx}:generate",
                     )
                 )
@@ -144,10 +175,18 @@ async def vacancy_detail_handler(callback: CallbackQuery):
             reply_markup=back_button_markup,
         )
         await safe_answer(callback)
-        logger.debug(f"Sent vacancy detail idx={idx} for user {user_id} query '{query}'")
+        logger.debug(
+            f"Sent vacancy detail idx={idx} for user {user_id} query '{query}'"
+        )
 
     except ValueError:
-        await safe_answer(callback, text=t("search.vacancy_detail.invalid_id", lang), show_alert=True)
+        await safe_answer(
+            callback, text=t("search.vacancy_detail.invalid_id", lang), show_alert=True
+        )
     except Exception as e:
         logger.error(f"Failed to handle vacancy detail for user {user_id}: {e}")
-        await safe_answer(callback, text=t("search.vacancy_detail.error_loading", lang), show_alert=True)
+        await safe_answer(
+            callback,
+            text=t("search.vacancy_detail.error_loading", lang),
+            show_alert=True,
+        )

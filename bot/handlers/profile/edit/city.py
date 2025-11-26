@@ -15,14 +15,17 @@ logger = get_logger(__name__)
 router = Router()
 
 
-def _update_city_history(history: list[dict] | None, city: str, area_id: str | None, limit: int = 5) -> list[dict]:
+def _update_city_history(
+    history: list[dict] | None, city: str, area_id: str | None, limit: int = 5
+) -> list[dict]:
     history = history or []
     normalized_key = (city or "").strip().lower()
     area_key = (area_id or "").strip()
     filtered = [
         item
         for item in history
-        if item.get("city", "").strip().lower() != normalized_key or (item.get("area_id") or "") != area_key
+        if item.get("city", "").strip().lower() != normalized_key
+        or (item.get("area_id") or "") != area_key
     ]
     filtered.insert(0, {"city": city, "area_id": area_id})
     return filtered[:limit]
@@ -41,7 +44,11 @@ async def send_city_menu(
         user = await repo.get_user_by_tg_id(tg_id) if tg_id else None
 
     if not user:
-        target = message_obj.message if isinstance(message_obj, types.CallbackQuery) else message_obj
+        target = (
+            message_obj.message
+            if isinstance(message_obj, types.CallbackQuery)
+            else message_obj
+        )
         await target.answer(t("profile.no_profile", lang))
         if isinstance(message_obj, types.CallbackQuery):
             await message_obj.answer()
@@ -74,7 +81,11 @@ async def send_city_menu(
         ]
     )
     buttons.append(
-        [types.InlineKeyboardButton(text=t("profile.buttons.back_profile", lang), callback_data="city_back")]
+        [
+            types.InlineKeyboardButton(
+                text=t("profile.buttons.back_profile", lang), callback_data="city_back"
+            )
+        ]
     )
 
     text = (
@@ -84,7 +95,11 @@ async def send_city_menu(
     )
 
     markup = types.InlineKeyboardMarkup(inline_keyboard=buttons)
-    target = message_obj.message if isinstance(message_obj, types.CallbackQuery) else message_obj
+    target = (
+        message_obj.message
+        if isinstance(message_obj, types.CallbackQuery)
+        else message_obj
+    )
     bot = getattr(message_obj, "bot", None)
 
     if message_id and bot and chat_id:
@@ -120,13 +135,17 @@ async def send_city_menu(
 @router.callback_query(F.data == "edit_city")
 async def cb_edit_city(call: types.CallbackQuery, state: FSMContext):
     await state.clear()
-    lang = await resolve_lang(str(call.from_user.id), call.from_user.language_code if call.from_user else None)
+    lang = await resolve_lang(
+        str(call.from_user.id), call.from_user.language_code if call.from_user else None
+    )
     await send_city_menu(call, lang, edit=True)
 
 
 @router.callback_query(F.data == "city_enter")
 async def cb_city_enter(call: types.CallbackQuery, state: FSMContext):
-    lang = await resolve_lang(str(call.from_user.id), call.from_user.language_code if call.from_user else None)
+    lang = await resolve_lang(
+        str(call.from_user.id), call.from_user.language_code if call.from_user else None
+    )
     prompt = await call.message.answer(t("profile.edit_city_prompt", lang))
     await state.update_data(
         city_menu_chat_id=call.message.chat.id,
@@ -149,7 +168,9 @@ async def cb_city_back(call: types.CallbackQuery, state: FSMContext):
 @router.callback_query(F.data.startswith("city_pick:"))
 async def cb_city_pick(call: types.CallbackQuery, state: FSMContext):
     await state.clear()
-    lang = await resolve_lang(str(call.from_user.id), call.from_user.language_code if call.from_user else None)
+    lang = await resolve_lang(
+        str(call.from_user.id), call.from_user.language_code if call.from_user else None
+    )
     try:
         idx = int(call.data.split(":")[1])
     except Exception:
@@ -168,7 +189,9 @@ async def cb_city_pick(call: types.CallbackQuery, state: FSMContext):
         prefs = user.preferences or {}
         history = prefs.get("city_history") or []
         if idx >= len(history) or idx < 0:
-            await call.message.answer(t("profile.edit_city_not_found", lang).format(city=""))
+            await call.message.answer(
+                t("profile.edit_city_not_found", lang).format(city="")
+            )
             await call.answer()
             return
 
@@ -192,7 +215,9 @@ async def cb_city_pick(call: types.CallbackQuery, state: FSMContext):
 async def save_city(message: types.Message, state: FSMContext):
     city_input = (message.text or "").strip()
     user_id = str(message.from_user.id)
-    lang = await resolve_lang(user_id, message.from_user.language_code if message.from_user else None)
+    lang = await resolve_lang(
+        user_id, message.from_user.language_code if message.from_user else None
+    )
 
     if not city_input:
         await message.answer(t("profile.edit_city_empty", lang))
@@ -210,11 +235,15 @@ async def save_city(message: types.Message, state: FSMContext):
         await message.answer(t("profile.search_city_service_unavailable", lang))
         return
 
-    lookup_msg = await message.answer(t("profile.edit_city_lookup", lang).format(city=city_input))
+    lookup_msg = await message.answer(
+        t("profile.edit_city_lookup", lang).format(city=city_input)
+    )
     area_id = await hh_service.find_area_by_name(city_input)
 
     if not area_id:
-        await message.answer(t("profile.edit_city_not_found", lang).format(city=city_input))
+        await message.answer(
+            t("profile.edit_city_not_found", lang).format(city=city_input)
+        )
         return
 
     async with db_session() as session:
@@ -239,7 +268,9 @@ async def save_city(message: types.Message, state: FSMContext):
         chat_id=menu_chat_id or message.chat.id,
         message_id=menu_message_id,
     )
-    success_msg = await message.answer(t("profile.edit_city_updated", lang).format(city=city_input))
+    success_msg = await message.answer(
+        t("profile.edit_city_updated", lang).format(city=city_input)
+    )
 
     async def _safe_delete(msg: types.Message):
         try:
@@ -251,7 +282,9 @@ async def save_city(message: types.Message, state: FSMContext):
     await _safe_delete(lookup_msg)
     if prompt_message_id:
         try:
-            await message.bot.delete_message(chat_id=menu_chat_id or message.chat.id, message_id=prompt_message_id)
+            await message.bot.delete_message(
+                chat_id=menu_chat_id or message.chat.id, message_id=prompt_message_id
+            )
         except Exception as e:
             logger.debug(f"Failed to delete city prompt message: {e}")
     await _safe_delete(success_msg)

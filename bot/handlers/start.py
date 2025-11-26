@@ -30,11 +30,15 @@ async def start_handler(message: Message):
     """Handler for the /start command with comprehensive logging and database integration"""
     user_id = str(message.from_user.id)
     username = message.from_user.username or "N/A"
-    full_name = f"{message.from_user.first_name} {message.from_user.last_name or ''}".strip()
+    full_name = (
+        f"{message.from_user.first_name} {message.from_user.last_name or ''}".strip()
+    )
     language_code = message.from_user.language_code
     lang = detect_lang(language_code)
 
-    logger.info(f"Start command received from user {user_id} (@{username}, {full_name})")
+    logger.info(
+        f"Start command received from user {user_id} (@{username}, {full_name})"
+    )
 
     try:
         # Create or update user in database
@@ -50,7 +54,9 @@ async def start_handler(message: Message):
                     language_code=language_code,
                 )
                 lang = detect_lang(user.language_code)
-                logger.debug(f"User {user_id} database record updated/created with ID {user.id}")
+                logger.debug(
+                    f"User {user_id} database record updated/created with ID {user.id}"
+                )
             except Exception as e:
                 logger.error(f"Failed to update user {user_id} in database: {e}")
             finally:
@@ -60,7 +66,9 @@ async def start_handler(message: Message):
 
         commands_list = t("start.commands_list", lang)
         tips = t("start.tips", lang)
-        welcome_message = t("start.welcome", lang, name=full_name, commands=commands_list, tips=tips)
+        welcome_message = t(
+            "start.welcome", lang, name=full_name, commands=commands_list, tips=tips
+        )
 
         await message.answer(welcome_message)
         logger.debug(f"Start message sent to user {user_id}")
@@ -69,9 +77,7 @@ async def start_handler(message: Message):
         hh_available = hh_service.session is not None
         openai_available = openai_service._initialized
 
-        service_status = (
-            f"HH service: {'✓' if hh_available else '✗'}, OpenAI service: {'✓' if openai_available else '✗'}"
-        )
+        service_status = f"HH service: {'✓' if hh_available else '✗'}, OpenAI service: {'✓' if openai_available else '✗'}"
         logger.info(f"Service availability for user {user_id}: {service_status}")
 
     except Exception as e:

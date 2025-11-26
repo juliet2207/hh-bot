@@ -24,13 +24,18 @@ class OpenAIService:
             openai_logger.info("Initializing OpenAI service...")
 
             if not self.settings.LLM_API_KEY:
-                openai_logger.warning("LLM API key not found in settings, skipping OpenAI service initialization")
+                openai_logger.warning(
+                    "LLM API key not found in settings, skipping OpenAI service initialization"
+                )
                 return False
 
             # Use custom API base URL if provided
             client_params = {"api_key": self.settings.LLM_API_KEY}
 
-            if self.settings.LLM_API_URL and self.settings.LLM_API_URL != "https://api.openai.com/v1":
+            if (
+                self.settings.LLM_API_URL
+                and self.settings.LLM_API_URL != "https://api.openai.com/v1"
+            ):
                 client_params["base_url"] = self.settings.LLM_API_URL
 
             self.client = openai.AsyncOpenAI(**client_params)
@@ -63,7 +68,9 @@ class OpenAIService:
         override_api_key = llm_overrides.get("api_key") if llm_overrides else None
         override_base_url = llm_overrides.get("base_url") if llm_overrides else None
 
-        actual_model = override_model or (model if model != "gpt-3.5-turbo" else self.settings.LLM_MODEL)
+        actual_model = override_model or (
+            model if model != "gpt-3.5-turbo" else self.settings.LLM_MODEL
+        )
 
         # Decide which client to use
         client = self.client
@@ -74,7 +81,9 @@ class OpenAIService:
             client = openai.AsyncOpenAI(**client_params)
 
         if not client:
-            openai_logger.error("OpenAI client not available (init missing and no overrides provided)")
+            openai_logger.error(
+                "OpenAI client not available (init missing and no overrides provided)"
+            )
             return None
 
         request_id = f"chat_{hash(str(messages)) % 10000}"
@@ -116,7 +125,9 @@ class OpenAIService:
             openai_logger.error(f"[{request_id}] OpenAI API error: {e}")
             return None
         except Exception as e:
-            openai_logger.error(f"[{request_id}] Unexpected error during chat completion: {e}")
+            openai_logger.error(
+                f"[{request_id}] Unexpected error during chat completion: {e}"
+            )
             return None
 
     async def analyze_vacancy(self, vacancy_data: dict) -> str | None:
@@ -126,7 +137,9 @@ class OpenAIService:
             return None
 
         request_id = f"analyze_{vacancy_data.get('id', 'unknown')}"
-        openai_logger.info(f"[{request_id}] Analyzing vacancy: {vacancy_data.get('name', 'Unknown')}")
+        openai_logger.info(
+            f"[{request_id}] Analyzing vacancy: {vacancy_data.get('name', 'Unknown')}"
+        )
 
         try:
             # Prepare vacancy information for analysis
@@ -152,10 +165,14 @@ class OpenAIService:
                 },
             ]
 
-            analysis = await self.chat_completion(messages, model=self.settings.LLM_MODEL, max_tokens=500)
+            analysis = await self.chat_completion(
+                messages, model=self.settings.LLM_MODEL, max_tokens=500
+            )
 
             if analysis:
-                openai_logger.success(f"[{request_id}] Vacancy analysis completed successfully")
+                openai_logger.success(
+                    f"[{request_id}] Vacancy analysis completed successfully"
+                )
             else:
                 openai_logger.warning(f"[{request_id}] Failed to get vacancy analysis")
 
@@ -164,14 +181,18 @@ class OpenAIService:
             openai_logger.error(f"[{request_id}] Error analyzing vacancy: {e}")
             return None
 
-    async def generate_response_to_user(self, user_query: str, context: str | None = None) -> str | None:
+    async def generate_response_to_user(
+        self, user_query: str, context: str | None = None
+    ) -> str | None:
         """Generate a response to user query using OpenAI with comprehensive logging"""
         if not self._initialized:
             openai_logger.error("OpenAI service not initialized")
             return None
 
         request_id = f"response_{hash(user_query) % 10000}"
-        openai_logger.debug(f"[{request_id}] Generating response to user query: {user_query[:50]}...")
+        openai_logger.debug(
+            f"[{request_id}] Generating response to user query: {user_query[:50]}..."
+        )
 
         try:
             messages = [
@@ -186,16 +207,24 @@ class OpenAIService:
 
             messages.append({"role": "user", "content": user_query})
 
-            response = await self.chat_completion(messages, model=self.settings.LLM_MODEL, max_tokens=300)
+            response = await self.chat_completion(
+                messages, model=self.settings.LLM_MODEL, max_tokens=300
+            )
 
             if response:
-                openai_logger.success(f"[{request_id}] User response generated successfully")
+                openai_logger.success(
+                    f"[{request_id}] User response generated successfully"
+                )
             else:
-                openai_logger.warning(f"[{request_id}] Failed to generate user response")
+                openai_logger.warning(
+                    f"[{request_id}] Failed to generate user response"
+                )
 
             return response
         except Exception as e:
-            openai_logger.error(f"[{request_id}] Error generating response to user: {e}")
+            openai_logger.error(
+                f"[{request_id}] Error generating response to user: {e}"
+            )
             return None
 
 
@@ -209,7 +238,9 @@ async def test_openai_connection():
 
     try:
         if not openai_service.settings.LLM_API_KEY:
-            openai_logger.warning("LLM API key not configured, skipping connection test")
+            openai_logger.warning(
+                "LLM API key not configured, skipping connection test"
+            )
             return False
 
         if not openai_service._initialized:
@@ -225,14 +256,20 @@ async def test_openai_connection():
             {"role": "user", "content": "test"},
         ]
 
-        result = await openai_service.chat_completion(messages, model=openai_service.settings.LLM_MODEL, max_tokens=10)
+        result = await openai_service.chat_completion(
+            messages, model=openai_service.settings.LLM_MODEL, max_tokens=10
+        )
 
         if result and "test" in result.lower():
             openai_logger.success("OpenAI service connection test successful")
             return True
         else:
-            openai_logger.error(f"OpenAI service connection test failed, received: {result}")
+            openai_logger.error(
+                f"OpenAI service connection test failed, received: {result}"
+            )
             return False
     except Exception as e:
-        openai_logger.error(f"OpenAI service connection test failed with exception: {e}")
+        openai_logger.error(
+            f"OpenAI service connection test failed with exception: {e}"
+        )
         return False

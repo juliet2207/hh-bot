@@ -14,7 +14,9 @@ logger = get_logger(__name__)
 VACANCIES_PER_PAGE = 8
 
 
-def build_search_keyboard(query: str, page: int, total_pages: int, per_page: int, total_count: int):
+def build_search_keyboard(
+    query: str, page: int, total_pages: int, per_page: int, total_count: int
+):
     keyboard: list[list[dict[str, str]]] = []
     vacancy_row = create_vacancy_buttons(query, page, per_page, total_count)
     if vacancy_row:
@@ -29,13 +31,23 @@ def format_cv_header(vacancy: dict, lang: str) -> tuple[str, str]:
     return format_document_header(vacancy, lang, CVType.CV)
 
 
-def format_document_header(vacancy: dict, lang: str, doc_type: CVType) -> tuple[str, str]:
+def format_document_header(
+    vacancy: dict, lang: str, doc_type: CVType
+) -> tuple[str, str]:
     url = vacancy.get("alternate_url", "https://hh.ru")
-    employer = vacancy.get("employer", {}) if isinstance(vacancy.get("employer"), dict) else {}
+    employer = (
+        vacancy.get("employer", {}) if isinstance(vacancy.get("employer"), dict) else {}
+    )
     company = employer.get("name") if isinstance(employer, dict) else None
-    company_safe = html.escape(company) if company else t("search.common.vacancy_placeholder", lang)
+    company_safe = (
+        html.escape(company)
+        if company
+        else t("search.common.vacancy_placeholder", lang)
+    )
     header_key = (
-        "search.vacancy_detail.cv_header" if doc_type == CVType.CV else "search.vacancy_detail.cover_letter_header"
+        "search.vacancy_detail.cv_header"
+        if doc_type == CVType.CV
+        else "search.vacancy_detail.cover_letter_header"
     )
     link_text = t(header_key, lang).format(company=company_safe)
     header = f'📄 <a href="{url}">{link_text}</a>:'

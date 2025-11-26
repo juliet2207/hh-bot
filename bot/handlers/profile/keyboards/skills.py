@@ -12,6 +12,11 @@ def skills_keyboard(lang: str) -> InlineKeyboardMarkup:
                     callback_data="edit_skills",
                 )
             ],
-            [InlineKeyboardButton(text=t("profile.buttons.back_profile", lang), callback_data="skills_back_profile")],
+            [
+                InlineKeyboardButton(
+                    text=t("profile.buttons.back_profile", lang),
+                    callback_data="skills_back_profile",
+                )
+            ],
         ]
     )

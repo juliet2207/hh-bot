@@ -63,7 +63,9 @@ class BotScheduler:
             )
 
             self.jobs[job_id] = func
-            scheduler_logger.info(f"Job '{job_id}' added to scheduler: {job_name or job_id}")
+            scheduler_logger.info(
+                f"Job '{job_id}' added to scheduler: {job_name or job_id}"
+            )
             scheduler_logger.debug(f"Job '{job_id}' scheduled with trigger: {trigger}")
 
             return job
@@ -79,9 +81,13 @@ class BotScheduler:
                 del self.jobs[job_id]
                 scheduler_logger.info(f"Job '{job_id}' removed from scheduler")
             else:
-                scheduler_logger.warning(f"Attempted to remove non-existent job '{job_id}'")
+                scheduler_logger.warning(
+                    f"Attempted to remove non-existent job '{job_id}'"
+                )
         except Exception as e:
-            scheduler_logger.error(f"Failed to remove job '{job_id}' from scheduler: {e}")
+            scheduler_logger.error(
+                f"Failed to remove job '{job_id}' from scheduler: {e}"
+            )
             raise
 
     def list_jobs(self) -> list[dict]:

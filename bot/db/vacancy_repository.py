@@ -16,7 +16,9 @@ class VacancyRepository:
         self.session = session
         self.logger = repo_logger.bind(repository="VacancyRepository")
 
-    async def get_or_create_vacancy(self, hh_vacancy_id: str, **kwargs) -> tuple[Vacancy, bool]:
+    async def get_or_create_vacancy(
+        self, hh_vacancy_id: str, **kwargs
+    ) -> tuple[Vacancy, bool]:
         """Get existing vacancy or create a new one. Returns (vacancy, is_new)"""
         try:
             # Try to get existing vacancy
@@ -26,12 +28,22 @@ class VacancyRepository:
 
             if vacancy:
                 # Update vacancy info if provided
-                update_data = {k: v for k, v in kwargs.items() if hasattr(vacancy, k) and v is not None}
+                update_data = {
+                    k: v
+                    for k, v in kwargs.items()
+                    if hasattr(vacancy, k) and v is not None
+                }
                 if update_data:
-                    update_stmt = update(Vacancy).where(Vacancy.hh_vacancy_id == hh_vacancy_id).values(**update_data)
+                    update_stmt = (
+                        update(Vacancy)
+                        .where(Vacancy.hh_vacancy_id == hh_vacancy_id)
+                        .values(**update_data)
+                    )
                     await self.session.execute(update_stmt)
                     await self.session.commit()
-                    self.logger.debug(f"Updated vacancy {hh_vacancy_id} with data: {update_data}")
+                    self.logger.debug(
+                        f"Updated vacancy {hh_vacancy_id} with data: {update_data}"
+                    )
                 return vacancy, False
             else:
                 # Create new vacancy
@@ -40,7 +52,9 @@ class VacancyRepository:
                 self.session.add(vacancy)
                 await self.session.commit()
                 await self.session.refresh(vacancy)
-                self.logger.info(f"Created new vacancy with ID {vacancy.id}, HH ID {hh_vacancy_id}")
+                self.logger.info(
+                    f"Created new vacancy with ID {vacancy.id}, HH ID {hh_vacancy_id}"
+                )
                 return vacancy, True
         except Exception as e:
             self.logger.error(f"Error getting/creating vacancy {hh_vacancy_id}: {e}")
@@ -77,7 +91,9 @@ class VacancyRepository:
             self.logger.error(f"Error getting vacancy by HH ID {hh_vacancy_id}: {e}")
             raise
 
-    async def get_vacancies_by_hh_ids(self, hh_vacancy_ids: list[str]) -> dict[str, Vacancy]:
+    async def get_vacancies_by_hh_ids(
+        self, hh_vacancy_ids: list[str]
+    ) -> dict[str, Vacancy]:
         """Get multiple vacancies by HH.ru IDs. Returns dict mapping hh_vacancy_id to Vacancy."""
         try:
             if not hh_vacancy_ids:
@@ -86,13 +102,17 @@ class VacancyRepository:
             result = await self.session.execute(stmt)
             vacancies = result.scalars().all()
             vacancy_dict = {v.hh_vacancy_id: v for v in vacancies}
-            self.logger.debug(f"Retrieved {len(vacancy_dict)} existing vacancies from {len(hh_vacancy_ids)} requested")
+            self.logger.debug(
+                f"Retrieved {len(vacancy_dict)} existing vacancies from {len(hh_vacancy_ids)} requested"
+            )
             return vacancy_dict
         except Exception as e:
             self.logger.error(f"Error getting vacancies by HH IDs: {e}")
             raise
 
-    async def bulk_create_vacancies(self, vacancies_data: list[dict]) -> dict[str, Vacancy]:
+    async def bulk_create_vacancies(
+        self, vacancies_data: list[dict]
+    ) -> dict[str, Vacancy]:
         """Bulk create vacancies. Returns dict mapping hh_vacancy_id to Vacancy.
         Uses PostgreSQL ON CONFLICT to handle duplicates."""
         try:

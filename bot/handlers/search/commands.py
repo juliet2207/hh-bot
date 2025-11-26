@@ -34,7 +34,9 @@ async def search_handler(message: Message):
     # Extract search query from message
     query = message.text.split(maxsplit=1)[1] if len(message.text.split()) > 1 else ""
 
-    logger.debug(f"Search command received from user {user_id} (@{username}) with query: '{query}'")
+    logger.debug(
+        f"Search command received from user {user_id} (@{username}) with query: '{query}'"
+    )
 
     try:
         user_obj, lang = await get_or_create_user_lang(message)
@@ -58,14 +60,18 @@ async def search_handler(message: Message):
         await _run_new_search(message, user_obj, user_db_id, query, lang, loading_msg)
 
     except Exception as e:
-        logger.error(f"Failed to handle search command for user {user_id}, query '{query}': {e}")
+        logger.error(
+            f"Failed to handle search command for user {user_id}, query '{query}': {e}"
+        )
         try:
             await message.answer(t("search.error_processing", lang))
         except Exception:
             logger.error(f"Failed to send error message to user {user_id}")
 
 
-async def _handle_no_query(message: Message, user_id: str, user_db_id: int | None, lang: str) -> bool:
+async def _handle_no_query(
+    message: Message, user_id: str, user_db_id: int | None, lang: str
+) -> bool:
     """If no query provided, try to show last stored results. Return True if handled."""
     if not user_db_id:
         await message.answer(t("search.no_profile", lang))
@@ -92,8 +98,12 @@ async def _handle_no_query(message: Message, user_id: str, user_db_id: int | Non
 
     page = 0
     total_pages = (len(vacancies) + VACANCIES_PER_PAGE - 1) // VACANCIES_PER_PAGE
-    response_text = format_search_page(query, vacancies, page, VACANCIES_PER_PAGE, total_found, lang)
-    reply_markup = build_search_keyboard(query, page, total_pages, VACANCIES_PER_PAGE, len(vacancies))
+    response_text = format_search_page(
+        query, vacancies, page, VACANCIES_PER_PAGE, total_found, lang
+    )
+    reply_markup = build_search_keyboard(
+        query, page, total_pages, VACANCIES_PER_PAGE, len(vacancies)
+    )
 
     await message.answer(
         response_text,
@@ -122,11 +132,15 @@ async def _run_new_search(
         f"Performing search for query '{query}' for user {message.from_user.id} "
         f"(city: {user_city_info[0] if user_city_info else 'any'}, area_id: {area_id})"
     )
-    results, response_time = await perform_search(query, per_page=100, area_id=area_id, filters=search_filters)
+    results, response_time = await perform_search(
+        query, per_page=100, area_id=area_id, filters=search_filters
+    )
 
     if not results or not results.get("items"):
         await loading_msg.delete()
-        logger.debug(f"No vacancies found for query '{query}' for user {message.from_user.id}")
+        logger.debug(
+            f"No vacancies found for query '{query}' for user {message.from_user.id}"
+        )
 
         if user_db_id:
             async with db_session() as session:
@@ -139,9 +153,13 @@ async def _run_new_search(
                             results_count=0,
                             response_time=response_time,
                         )
-                        logger.debug(f"Stored search query with no results for user {user_db_id}")
+                        logger.debug(
+                            f"Stored search query with no results for user {user_db_id}"
+                        )
                     except Exception as e:
-                        logger.error(f"Failed to store search query for user {user_db_id}: {e}")
+                        logger.error(
+                            f"Failed to store search query for user {user_db_id}: {e}"
+                        )
 
         await message.answer(t("search.no_results", lang).format(query=query))
         return
@@ -150,13 +168,19 @@ async def _run_new_search(
     total_found = results.get("found", len(vacancies))
 
     if user_db_id:
-        await store_search_results(user_db_id, query, vacancies, response_time, per_page=100)
+        await store_search_results(
+            user_db_id, query, vacancies, response_time, per_page=100
+        )
         cache_vacancies(user_db_id, query, vacancies, total_found)
 
     page = 0
     total_pages = (len(vacancies) + VACANCIES_PER_PAGE - 1) // VACANCIES_PER_PAGE
-    response_text = format_search_page(query, vacancies, page, VACANCIES_PER_PAGE, total_found, lang)
-    reply_markup = build_search_keyboard(query, page, total_pages, VACANCIES_PER_PAGE, len(vacancies))
+    response_text = format_search_page(
+        query, vacancies, page, VACANCIES_PER_PAGE, total_found, lang
+    )
+    reply_markup = build_search_keyboard(
+        query, page, total_pages, VACANCIES_PER_PAGE, len(vacancies)
+    )
 
     await loading_msg.delete()
     await message.answer(

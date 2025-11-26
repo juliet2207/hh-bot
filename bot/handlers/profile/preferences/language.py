@@ -15,12 +15,25 @@ from .view import send_preferences_view  # noqa: E402
 async def cb_prefs_lang_menu(call: types.CallbackQuery, state):
     lang = detect_lang(call.from_user.language_code if call.from_user else None)
     buttons = [
-        [types.InlineKeyboardButton(text=t("profile.languages.en", lang), callback_data="prefs_set_lang:en")],
-        [types.InlineKeyboardButton(text=t("profile.languages.ru", lang), callback_data="prefs_set_lang:ru")],
-        [types.InlineKeyboardButton(text=t("profile.buttons.back_profile", lang), callback_data="prefs_menu")],
+        [
+            types.InlineKeyboardButton(
+                text=t("profile.languages.en", lang), callback_data="prefs_set_lang:en"
+            )
+        ],
+        [
+            types.InlineKeyboardButton(
+                text=t("profile.languages.ru", lang), callback_data="prefs_set_lang:ru"
+            )
+        ],
+        [
+            types.InlineKeyboardButton(
+                text=t("profile.buttons.back_profile", lang), callback_data="prefs_menu"
+            )
+        ],
     ]
     await call.message.answer(
-        t("profile.preferences_lang_prompt", lang), reply_markup=types.InlineKeyboardMarkup(inline_keyboard=buttons)
+        t("profile.preferences_lang_prompt", lang),
+        reply_markup=types.InlineKeyboardMarkup(inline_keyboard=buttons),
     )
     await state.clear()
     await call.answer()
@@ -41,6 +54,8 @@ async def cb_prefs_set_lang(call: types.CallbackQuery, state):
         await repo.update_language_code(str(call.from_user.id), target_lang)
 
     lang_name = t(f"profile.languages.{target_lang}", target_lang)
-    await call.message.answer(t("profile.preferences_lang_saved", target_lang).format(language=lang_name))
+    await call.message.answer(
+        t("profile.preferences_lang_saved", target_lang).format(language=lang_name)
+    )
     await call.answer()
     await send_preferences_view(call, str(call.from_user.id), edit=True)

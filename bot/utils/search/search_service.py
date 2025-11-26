@@ -56,15 +56,21 @@ async def perform_search(
                     break
                 retries += 1
                 if retries < max_retries:
-                    logger.warning(f"Failed to fetch page {page} (attempt {retries}/{max_retries}), retrying...")
+                    logger.warning(
+                        f"Failed to fetch page {page} (attempt {retries}/{max_retries}), retrying..."
+                    )
                     await asyncio.sleep(retry_delay * retries)
             except Exception as e:
-                logger.warning(f"Exception fetching page {page} (attempt {retries + 1}/{max_retries}): {e}")
+                logger.warning(
+                    f"Exception fetching page {page} (attempt {retries + 1}/{max_retries}): {e}"
+                )
                 retries += 1
                 if retries < max_retries:
                     await asyncio.sleep(retry_delay * retries)
                 else:
-                    logger.error(f"Failed to fetch page {page} after {max_retries} attempts")
+                    logger.error(
+                        f"Failed to fetch page {page} after {max_retries} attempts"
+                    )
                     break
 
         if not page_results:
@@ -95,6 +101,8 @@ async def perform_search(
         "pages": pages_count if page == 0 else (page + 1),
     }
 
-    logger.info(f"Search completed: found {total_found} total, fetched {len(all_items)} items in {response_time}ms")
+    logger.info(
+        f"Search completed: found {total_found} total, fetched {len(all_items)} items in {response_time}ms"
+    )
 
     return combined_results, response_time

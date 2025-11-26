@@ -78,7 +78,9 @@ async def init_database():
         connect_args=connect_args if connect_args else {},
     )
 
-    SessionLocal = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
+    SessionLocal = async_sessionmaker(
+        engine, expire_on_commit=False, class_=AsyncSession
+    )
 
     # Try connecting (Neon cold start → retry)
     for attempt in range(5):

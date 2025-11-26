@@ -18,7 +18,9 @@ def build_cv_prompt(
     extra = f"\nUser additional requirements: {user_prompt}" if user_prompt else ""
     prompt = prompt_template.format(user_prompt_extra=extra)
 
-    user_context = f"User skills: {skills_text}" if skills_text else "User skills not provided"
+    user_context = (
+        f"User skills: {skills_text}" if skills_text else "User skills not provided"
+    )
     if resume_text:
         user_context += f"\nUser base resume:\n{resume_text}"
 
@@ -49,7 +51,9 @@ def build_cover_letter_prompt(
     if resume_text:
         context_parts.append(f"User short resume:\n{resume_text}")
 
-    user_context = "\n".join(context_parts) if context_parts else "User skills not provided"
+    user_context = (
+        "\n".join(context_parts) if context_parts else "User skills not provided"
+    )
 
     return [
         {"role": "system", "content": prompt},

@@ -29,7 +29,11 @@ async def send_resume_menu(
         if user and user.language_code
         else (message_obj.from_user.language_code if message_obj.from_user else None)
     )
-    target = message_obj.message if isinstance(message_obj, types.CallbackQuery) else message_obj
+    target = (
+        message_obj.message
+        if isinstance(message_obj, types.CallbackQuery)
+        else message_obj
+    )
     bot = getattr(message_obj, "bot", None)
 
     if not user:
@@ -97,7 +101,9 @@ async def cb_resume_menu(call: types.CallbackQuery, state: FSMContext):
 
 @router.callback_query(F.data.in_({"resume_edit", "edit_resume"}))
 async def cb_edit_resume(call: types.CallbackQuery, state: FSMContext):
-    lang = await resolve_lang(str(call.from_user.id), call.from_user.language_code if call.from_user else None)
+    lang = await resolve_lang(
+        str(call.from_user.id), call.from_user.language_code if call.from_user else None
+    )
     prompt = await call.message.answer(t("profile.edit_resume_prompt", lang))
     await state.update_data(
         resume_prompt_chat_id=call.message.chat.id,
@@ -117,7 +123,9 @@ async def cb_resume_back_profile(call: types.CallbackQuery, state: FSMContext):
     await call.answer()
 
 
-async def _safe_delete(message: types.Message | None, context_state: FSMContext | None = None):
+async def _safe_delete(
+    message: types.Message | None, context_state: FSMContext | None = None
+):
     if not message:
         return
     try:
@@ -135,7 +143,9 @@ async def _cleanup_messages(message: types.Message, state: FSMContext):
 
     if prompt_message_id and prompt_chat_id:
         try:
-            await message.bot.delete_message(chat_id=prompt_chat_id, message_id=prompt_message_id)
+            await message.bot.delete_message(
+                chat_id=prompt_chat_id, message_id=prompt_message_id
+            )
         except Exception as e:
             logger.debug(f"Failed to delete resume prompt message: {e}")
 
@@ -144,7 +154,9 @@ async def _cleanup_messages(message: types.Message, state: FSMContext):
 async def save_resume(message: types.Message, state: FSMContext):
     resume_text = (message.text or "").strip()
     user_id = str(message.from_user.id)
-    lang = await resolve_lang(user_id, message.from_user.language_code if message.from_user else None)
+    lang = await resolve_lang(
+        user_id, message.from_user.language_code if message.from_user else None
+    )
 
     if not resume_text:
         await message.answer(t("profile.edit_resume_empty", lang))

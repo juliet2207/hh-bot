@@ -4,7 +4,12 @@ import math
 from bot.utils.i18n import t
 
 
-def short(text: str | None, lang: str, limit: int = 500, truncated_key: str = "profile.resume_truncated") -> str:
+def short(
+    text: str | None,
+    lang: str,
+    limit: int = 500,
+    truncated_key: str = "profile.resume_truncated",
+) -> str:
     if not text:
         return t("profile.not_set", lang)
     text = html.escape(text.strip())
@@ -23,7 +28,13 @@ def hide_key(key: str | None) -> str:
 
 def normalize_skills(raw: str) -> list[str]:
     """Convert mixed-format skill text (bullets/commas/newlines) into a clean list."""
-    cleaned = raw.replace("•", "\n").replace("·", "\n").replace(";", ",").replace("—", "\n").replace("–", "\n")
+    cleaned = (
+        raw.replace("•", "\n")
+        .replace("·", "\n")
+        .replace(";", ",")
+        .replace("—", "\n")
+        .replace("–", "\n")
+    )
 
     parts: list[str] = []
     for chunk in cleaned.split("\n"):
@@ -44,7 +55,9 @@ def normalize_skills(raw: str) -> list[str]:
     return skills
 
 
-def build_skills_preview(skills: list[str] | None, max_items: int = 5) -> tuple[int, str]:
+def build_skills_preview(
+    skills: list[str] | None, max_items: int = 5
+) -> tuple[int, str]:
     """Return total count and a spaced preview across the list (start/middle/end)."""
     cleaned = [s.strip().replace("\n", " ") for s in (skills or []) if s and s.strip()]
     count = len(cleaned)
@@ -97,8 +110,16 @@ def format_search_filters(filters: dict | None, lang: str) -> str:
     employment = filters.get("employment")
     experience = filters.get("experience")
 
-    employment_label = t(f"profile.employment.{employment}", lang) if employment else t("profile.not_set", lang)
-    experience_label = t(f"profile.experience.{experience}", lang) if experience else t("profile.not_set", lang)
+    employment_label = (
+        t(f"profile.employment.{employment}", lang)
+        if employment
+        else t("profile.not_set", lang)
+    )
+    experience_label = (
+        t(f"profile.experience.{experience}", lang)
+        if experience
+        else t("profile.not_set", lang)
+    )
 
     return (
         t("profile.search_filters.min_salary", lang).format(
@@ -109,7 +130,9 @@ def format_search_filters(filters: dict | None, lang: str) -> str:
             state=t("profile.on", lang) if remote else t("profile.off", lang)
         )
         + "\n"
-        + t("profile.search_filters.freshness", lang).format(value=freshness or t("profile.not_set", lang))
+        + t("profile.search_filters.freshness", lang).format(
+            value=freshness or t("profile.not_set", lang)
+        )
         + "\n"
         + t("profile.search_filters.employment", lang).format(value=employment_label)
         + "\n"

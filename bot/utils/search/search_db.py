@@ -25,9 +25,15 @@ def extract_vacancy_data(vacancy: dict) -> dict:
     area = vacancy.get("area", {})
     snippet = vacancy.get("snippet", {})
     salary = vacancy.get("salary") if isinstance(vacancy.get("salary"), dict) else {}
-    employment = vacancy.get("employment") if isinstance(vacancy.get("employment"), dict) else {}
-    experience = vacancy.get("experience") if isinstance(vacancy.get("experience"), dict) else {}
-    schedule = vacancy.get("schedule") if isinstance(vacancy.get("schedule"), dict) else {}
+    employment = (
+        vacancy.get("employment") if isinstance(vacancy.get("employment"), dict) else {}
+    )
+    experience = (
+        vacancy.get("experience") if isinstance(vacancy.get("experience"), dict) else {}
+    )
+    schedule = (
+        vacancy.get("schedule") if isinstance(vacancy.get("schedule"), dict) else {}
+    )
 
     return {
         "hh_vacancy_id": str(vacancy.get("id", "")),
@@ -35,8 +41,12 @@ def extract_vacancy_data(vacancy: dict) -> dict:
         "company": employer.get("name") if isinstance(employer, dict) else None,
         "location": area.get("name") if isinstance(area, dict) else None,
         "url": vacancy.get("alternate_url"),
-        "description": (snippet.get("requirement", "") if isinstance(snippet, dict) else ""),
-        "requirements": (snippet.get("responsibility", "") if isinstance(snippet, dict) else ""),
+        "description": (
+            snippet.get("requirement", "") if isinstance(snippet, dict) else ""
+        ),
+        "requirements": (
+            snippet.get("responsibility", "") if isinstance(snippet, dict) else ""
+        ),
         "salary_from": salary.get("from"),
         "salary_to": salary.get("to"),
         "salary_currency": salary.get("currency"),
@@ -78,10 +88,14 @@ async def store_search_results(
         existing_vacancies = await vacancy_repo.get_vacancies_by_hh_ids(hh_vacancy_ids)
         existing_ids = set(existing_vacancies.keys())
 
-        new_vacancies_data = [v for v in all_vacancy_data if v["hh_vacancy_id"] not in existing_ids]
+        new_vacancies_data = [
+            v for v in all_vacancy_data if v["hh_vacancy_id"] not in existing_ids
+        ]
 
         if new_vacancies_data:
-            new_vacancies_dict = await vacancy_repo.bulk_create_vacancies(new_vacancies_data)
+            new_vacancies_dict = await vacancy_repo.bulk_create_vacancies(
+                new_vacancies_data
+            )
             existing_vacancies.update(new_vacancies_dict)
         else:
             new_vacancies_dict = {}
@@ -111,7 +125,11 @@ async def store_search_results(
                     if val is not None and getattr(vac_obj, field) != val:
                         update_fields[field] = val
                 if update_fields:
-                    stmt = update(Vacancy).where(Vacancy.hh_vacancy_id == hh_id).values(**update_fields)
+                    stmt = (
+                        update(Vacancy)
+                        .where(Vacancy.hh_vacancy_id == hh_id)
+                        .values(**update_fields)
+                    )
                     await db_session.execute(stmt)
         if existing_ids:
             await db_session.commit()
@@ -131,7 +149,9 @@ async def store_search_results(
                 )
 
         if user_search_results_data:
-            await user_search_result_repo.bulk_create_user_search_results(user_search_results_data)
+            await user_search_result_repo.bulk_create_user_search_results(
+                user_search_results_data
+            )
 
         new_count = len(new_vacancies_dict)
         existing_count = len(vacancies) - new_count
@@ -148,7 +168,9 @@ async def store_search_results(
         await db_session.close()
 
 
-async def get_vacancies_from_db(user_db_id: int, query_text: str, use_cache: bool = True) -> tuple[list[dict], int]:
+async def get_vacancies_from_db(
+    user_db_id: int, query_text: str, use_cache: bool = True
+) -> tuple[list[dict], int]:
     """Get vacancies from database for a user's search query."""
     if use_cache:
         cached = get_cached_vacancies(user_db_id, query_text)
@@ -162,10 +184,14 @@ async def get_vacancies_from_db(user_db_id: int, query_text: str, use_cache: boo
 
     try:
         search_repo = SearchQueryRepository(db_session)
-        search_query = await search_repo.get_latest_search_query(user_id=user_db_id, query_text=query_text)
+        search_query = await search_repo.get_latest_search_query(
+            user_id=user_db_id, query_text=query_text
+        )
 
         if not search_query:
-            logger.warning(f"No search query found for user {user_db_id} with query '{query_text}'")
+            logger.warning(
+                f"No search query found for user {user_db_id} with query '{query_text}'"
+            )
             return [], 0
 
         stmt = (
@@ -192,8 +218,12 @@ async def get_vacancies_from_db(user_db_id: int, query_text: str, use_cache: boo
                     "alternate_url": url,
                     "description": _normalize_field(vacancy.description) or "",
                     "requirements": _normalize_field(vacancy.requirements) or "",
-                    "employment": {"id": vacancy.employment_type} if vacancy.employment_type else None,
-                    "experience": {"id": vacancy.experience} if vacancy.experience else None,
+                    "employment": {"id": vacancy.employment_type}
+                    if vacancy.employment_type
+                    else None,
+                    "experience": {"id": vacancy.experience}
+                    if vacancy.experience
+                    else None,
                     "schedule": {"id": vacancy.schedule} if vacancy.schedule else None,
                     "salary": (
                         {
@@ -212,7 +242,9 @@ async def get_vacancies_from_db(user_db_id: int, query_text: str, use_cache: boo
         if use_cache:
             cache_vacancies(user_db_id, query_text, vacancies, total_found)
 
-        logger.debug(f"Retrieved {len(vacancies)} vacancies from DB for user {user_db_id}, query '{query_text}'")
+        logger.debug(
+            f"Retrieved {len(vacancies)} vacancies from DB for user {user_db_id}, query '{query_text}'"
+        )
         return vacancies, total_found
 
     except Exception as e:

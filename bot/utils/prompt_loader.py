@@ -25,6 +25,8 @@ def load_prompt(name: str) -> str:
             logger.error(f"Failed to load prompt {name} from {path}: {e}")
             return ""
 
-    missing_paths = ", ".join(str((base / filename).resolve()) for base in PROMPTS_DIR_CANDIDATES)
+    missing_paths = ", ".join(
+        str((base / filename).resolve()) for base in PROMPTS_DIR_CANDIDATES
+    )
     logger.error(f"Prompt file not found in any known location: {missing_paths}")
     return ""

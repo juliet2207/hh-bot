@@ -18,7 +18,11 @@ def search_settings_keyboard(filters: dict | None, lang: str) -> InlineKeyboardM
             [
                 InlineKeyboardButton(
                     text=t("profile.buttons.remote", lang).format(
-                        state=(t("profile.on_tick", lang) if remote else t("profile.off", lang))
+                        state=(
+                            t("profile.on_tick", lang)
+                            if remote
+                            else t("profile.off", lang)
+                        )
                     ),
                     callback_data="search_toggle_remote",
                 )

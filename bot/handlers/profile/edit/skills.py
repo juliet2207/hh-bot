@@ -30,7 +30,11 @@ async def send_skills_menu(
         if user and user.language_code
         else (message_obj.from_user.language_code if message_obj.from_user else None)
     )
-    target = message_obj.message if isinstance(message_obj, types.CallbackQuery) else message_obj
+    target = (
+        message_obj.message
+        if isinstance(message_obj, types.CallbackQuery)
+        else message_obj
+    )
 
     if not user:
         await target.answer(t("profile.no_profile", lang))
@@ -46,7 +50,12 @@ async def send_skills_menu(
         text = t("profile.skills_menu_empty", lang)
     else:
         skills_text = ", ".join(html.escape(skill) for skill in skills_list)
-        text = t("profile.skills_menu", lang, count=len(skills_list), skills=f"<code>{skills_text}</code>")
+        text = t(
+            "profile.skills_menu",
+            lang,
+            count=len(skills_list),
+            skills=f"<code>{skills_text}</code>",
+        )
 
     bot = getattr(message_obj, "bot", None)
 
@@ -99,7 +108,9 @@ async def cb_skills_menu(call: types.CallbackQuery, state: FSMContext):
 
 @router.callback_query(F.data == "edit_skills")
 async def cb_edit_skills(call: types.CallbackQuery, state: FSMContext):
-    lang = await resolve_lang(str(call.from_user.id), call.from_user.language_code if call.from_user else None)
+    lang = await resolve_lang(
+        str(call.from_user.id), call.from_user.language_code if call.from_user else None
+    )
     prompt = await call.message.answer(t("profile.edit_skills_prompt", lang))
     await state.update_data(
         skills_menu_chat_id=call.message.chat.id,
@@ -124,7 +135,9 @@ async def cb_skills_back_profile(call: types.CallbackQuery, state: FSMContext):
 async def save_skills(message: types.Message, state: FSMContext):
     skills_input = (message.text or "").strip()
     user_id = str(message.from_user.id)
-    lang = await resolve_lang(user_id, message.from_user.language_code if message.from_user else None)
+    lang = await resolve_lang(
+        user_id, message.from_user.language_code if message.from_user else None
+    )
 
     state_data = await state.get_data()
     prompt_chat_id = state_data.get("skills_prompt_chat_id")
@@ -144,7 +157,8 @@ async def save_skills(message: types.Message, state: FSMContext):
         if prompt_message_id and (prompt_chat_id or menu_chat_id):
             try:
                 await message.bot.delete_message(
-                    chat_id=prompt_chat_id or menu_chat_id or message.chat.id, message_id=prompt_message_id
+                    chat_id=prompt_chat_id or menu_chat_id or message.chat.id,
+                    message_id=prompt_message_id,
                 )
             except Exception as e:
                 logger.debug(f"Failed to delete skills prompt message: {e}")

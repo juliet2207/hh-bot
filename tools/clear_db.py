@@ -64,12 +64,16 @@ async def clear_database():
 
     db_url_clean = urlunparse(parsed)
 
-    engine = create_async_engine(db_url_clean, connect_args=connect_args if connect_args else {})
+    engine = create_async_engine(
+        db_url_clean, connect_args=connect_args if connect_args else {}
+    )
 
     try:
         async with engine.begin() as conn:
             # Get all table names
-            result = await conn.execute(text("SELECT tablename FROM pg_tables WHERE schemaname = 'public';"))
+            result = await conn.execute(
+                text("SELECT tablename FROM pg_tables WHERE schemaname = 'public';")
+            )
             tables = [row[0] for row in result.fetchall()]
 
             print(f"Found tables: {tables}")
@@ -83,7 +87,9 @@ async def clear_database():
 
                 # Delete all data from each table
                 for table in tables:
-                    if table != "alembic_version":  # Skip alembic version table to preserve migration history
+                    if (
+                        table != "alembic_version"
+                    ):  # Skip alembic version table to preserve migration history
                         print(f"Clearing table: {table}")
                         await conn.execute(text(f"DELETE FROM {table};"))
 
@@ -125,7 +131,9 @@ async def clear_database():
                         await conn.execute(text(f"DELETE FROM {table};"))
                         await conn.execute(text("COMMIT;"))
 
-                print("Note: alembic_version table was preserved to maintain migration history")
+                print(
+                    "Note: alembic_version table was preserved to maintain migration history"
+                )
 
                 print("Database cleared successfully!")
                 return True

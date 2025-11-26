@@ -35,14 +35,18 @@ class SearchQueryRepository:
             self.session.add(search_query)
             await self.session.commit()
             await self.session.refresh(search_query)
-            self.logger.info(f"Created search query {search_query.id} for user {user_id}")
+            self.logger.info(
+                f"Created search query {search_query.id} for user {user_id}"
+            )
             return search_query
         except Exception as e:
             self.logger.error(f"Error creating search query for user {user_id}: {e}")
             await self.session.rollback()
             raise
 
-    async def get_search_queries_by_user(self, user_id: int, limit: int = 10) -> list[SearchQuery]:
+    async def get_search_queries_by_user(
+        self, user_id: int, limit: int = 10
+    ) -> list[SearchQuery]:
         """Get recent search queries for a user"""
         try:
             stmt = (
@@ -53,13 +57,17 @@ class SearchQueryRepository:
             )
             result = await self.session.execute(stmt)
             queries = result.scalars().all()
-            self.logger.debug(f"Retrieved {len(queries)} search queries for user {user_id}")
+            self.logger.debug(
+                f"Retrieved {len(queries)} search queries for user {user_id}"
+            )
             return queries
         except Exception as e:
             self.logger.error(f"Error getting search queries for user {user_id}: {e}")
             raise
 
-    async def get_latest_search_query(self, user_id: int, query_text: str) -> SearchQuery | None:
+    async def get_latest_search_query(
+        self, user_id: int, query_text: str
+    ) -> SearchQuery | None:
         """Get the most recent search query for a user with specific query text"""
         try:
             stmt = (
@@ -79,7 +87,9 @@ class SearchQueryRepository:
                 )
             return query
         except Exception as e:
-            self.logger.error(f"Error getting latest search query for user {user_id}: {e}")
+            self.logger.error(
+                f"Error getting latest search query for user {user_id}: {e}"
+            )
             raise
 
     async def get_latest_search_query_any(self, user_id: int) -> SearchQuery | None:
@@ -99,5 +109,7 @@ class SearchQueryRepository:
                 )
             return query
         except Exception as e:
-            self.logger.error(f"Error getting latest search query for user {user_id}: {e}")
+            self.logger.error(
+                f"Error getting latest search query for user {user_id}: {e}"
+            )
             raise

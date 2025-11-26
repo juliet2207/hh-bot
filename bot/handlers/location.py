@@ -35,7 +35,9 @@ async def location_handler(message: Message):
     parts = message.text.split(maxsplit=1)
     city_name = parts[1] if len(parts) > 1 else None
 
-    logger.info(f"Location command received from user {user_id} (@{username}) with city: '{city_name}'")
+    logger.info(
+        f"Location command received from user {user_id} (@{username}) with city: '{city_name}'"
+    )
 
     db_session = await get_db_session()
     if not db_session:
@@ -96,7 +98,9 @@ async def location_handler(message: Message):
                 t("location.set", lang).format(city=city_name),
                 parse_mode="HTML",
             )
-            logger.success(f"User {user_id} set location to {city_name} (area_id: {area_id})")
+            logger.success(
+                f"User {user_id} set location to {city_name} (area_id: {area_id})"
+            )
         else:
             await message.answer(t("location.set_failed", lang))
 

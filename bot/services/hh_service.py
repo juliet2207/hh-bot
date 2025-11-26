@@ -81,7 +81,9 @@ class HHService:
         search_text = f"name:{text}" if search_in_name_only else text
 
         request_id = f"search_{hash(search_text + str(page)) % 100}"
-        hh_logger.info(f"[{request_id}] Searching for vacancies: '{search_text}' (page {page}, per_page {per_page})")
+        hh_logger.info(
+            f"[{request_id}] Searching for vacancies: '{search_text}' (page {page}, per_page {per_page})"
+        )
 
         start_time = asyncio.get_event_loop().time()
 
@@ -114,13 +116,17 @@ class HHService:
 
             return result
         except httpx.HTTPStatusError as e:
-            hh_logger.error(f"[{request_id}] HTTP error during vacancy search: {e.response.status_code} - {e}")
+            hh_logger.error(
+                f"[{request_id}] HTTP error during vacancy search: {e.response.status_code} - {e}"
+            )
             return None
         except httpx.RequestError as e:
             hh_logger.error(f"[{request_id}] Request error during vacancy search: {e}")
             return None
         except Exception as e:
-            hh_logger.error(f"[{request_id}] Unexpected error during vacancy search: {e}")
+            hh_logger.error(
+                f"[{request_id}] Unexpected error during vacancy search: {e}"
+            )
             return None
 
     async def get_vacancy(self, vacancy_id: str) -> dict | None:
@@ -141,11 +147,15 @@ class HHService:
             result = response.json()
             execution_time = asyncio.get_event_loop().time() - start_time
 
-            hh_logger.success(f"[{request_id}] Vacancy details fetched in {execution_time:.3f}s")
+            hh_logger.success(
+                f"[{request_id}] Vacancy details fetched in {execution_time:.3f}s"
+            )
 
             return result
         except httpx.HTTPStatusError as e:
-            hh_logger.error(f"[{request_id}] HTTP error fetching vacancy: {e.response.status_code} - {e}")
+            hh_logger.error(
+                f"[{request_id}] HTTP error fetching vacancy: {e.response.status_code} - {e}"
+            )
             return None
         except httpx.RequestError as e:
             hh_logger.error(f"[{request_id}] Request error fetching vacancy: {e}")
@@ -173,11 +183,15 @@ class HHService:
             execution_time = asyncio.get_event_loop().time() - start_time
 
             area_count = len(result) if isinstance(result, list) else 0
-            hh_logger.success(f"[{request_id}] Areas fetched in {execution_time:.3f}s, found {area_count} areas")
+            hh_logger.success(
+                f"[{request_id}] Areas fetched in {execution_time:.3f}s, found {area_count} areas"
+            )
 
             return result
         except httpx.HTTPStatusError as e:
-            hh_logger.error(f"[{request_id}] HTTP error fetching areas: {e.response.status_code} - {e}")
+            hh_logger.error(
+                f"[{request_id}] HTTP error fetching areas: {e.response.status_code} - {e}"
+            )
             return None
         except httpx.RequestError as e:
             hh_logger.error(f"[{request_id}] Request error fetching areas: {e}")
@@ -239,11 +253,15 @@ class HHService:
             result = response.json()
             execution_time = asyncio.get_event_loop().time() - start_time
 
-            hh_logger.success(f"[{request_id}] Employer details fetched in {execution_time:.3f}s")
+            hh_logger.success(
+                f"[{request_id}] Employer details fetched in {execution_time:.3f}s"
+            )
 
             return result
         except httpx.HTTPStatusError as e:
-            hh_logger.error(f"[{request_id}] HTTP error fetching employer: {e.response.status_code} - {e}")
+            hh_logger.error(
+                f"[{request_id}] HTTP error fetching employer: {e.response.status_code} - {e}"
+            )
             return None
         except httpx.RequestError as e:
             hh_logger.error(f"[{request_id}] Request error fetching employer: {e}")

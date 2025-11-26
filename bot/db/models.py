@@ -9,7 +9,9 @@ class User(Base):
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    tg_user_id = Column(String(50), unique=True, nullable=False, index=True)  # Telegram user ID
+    tg_user_id = Column(
+        String(50), unique=True, nullable=False, index=True
+    )  # Telegram user ID
     username = Column(String(100), nullable=True)  # Telegram username
     first_name = Column(String(100), nullable=True)  # Telegram first name
     last_name = Column(String(100), nullable=True)  # Telegram last name
@@ -38,7 +40,9 @@ class Vacancy(Base):
     __tablename__ = "vacancies"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    hh_vacancy_id = Column(String(50), unique=True, nullable=False, index=True)  # HH.ru vacancy ID
+    hh_vacancy_id = Column(
+        String(50), unique=True, nullable=False, index=True
+    )  # HH.ru vacancy ID
     title = Column(String(500), nullable=False)  # Job title
     company = Column(String(200), nullable=True)  # Company name
     salary_from = Column(Integer, nullable=True)  # Minimum salary
@@ -48,7 +52,9 @@ class Vacancy(Base):
     description = Column(Text, nullable=True)  # Job description
     requirements = Column(Text, nullable=True)  # Job requirements
     experience = Column(String(100), nullable=True)  # Required experience
-    employment_type = Column(String(100), nullable=True)  # Employment type (full-time, part-time, etc.)
+    employment_type = Column(
+        String(100), nullable=True
+    )  # Employment type (full-time, part-time, etc.)
     schedule = Column(String(100), nullable=True)  # Work schedule
     url = Column(String(500), nullable=True)  # Link to the job on HH.ru
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -61,8 +67,12 @@ class UserSearchResult(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(Integer, nullable=False, index=True)  # Foreign key to users table
-    search_query_id = Column(Integer, nullable=False, index=True)  # Foreign key to search_queries table
-    vacancy_id = Column(Integer, nullable=False, index=True)  # Foreign key to vacancies table
+    search_query_id = Column(
+        Integer, nullable=False, index=True
+    )  # Foreign key to search_queries table
+    vacancy_id = Column(
+        Integer, nullable=False, index=True
+    )  # Foreign key to vacancies table
     position = Column(Integer, nullable=False)  # Position in search results
     clicked = Column(Boolean, default=False)  # Whether the user clicked on this result
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -70,11 +80,15 @@ class UserSearchResult(Base):
 
 class CV(Base):
     __tablename__ = "cv"
-    __table_args__ = (Index("ix_cv_user_vacancy_type", "user_id", "vacancy_id", "type"),)
+    __table_args__ = (
+        Index("ix_cv_user_vacancy_type", "user_id", "vacancy_id", "type"),
+    )
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(Integer, nullable=False, index=True)
     vacancy_id = Column(Integer, nullable=False, index=True)
-    type = Column(Integer, nullable=False, default=0, server_default="0")  # 0=CV, 1=cover letter
+    type = Column(
+        Integer, nullable=False, default=0, server_default="0"
+    )  # 0=CV, 1=cover letter
     text = Column(Text, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())

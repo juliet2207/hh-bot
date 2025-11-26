@@ -11,7 +11,9 @@ router = Router()
 
 @router.callback_query(F.data == "edit_position")
 async def cb_edit_position(call: types.CallbackQuery, state: FSMContext):
-    lang = await resolve_lang(str(call.from_user.id), call.from_user.language_code if call.from_user else None)
+    lang = await resolve_lang(
+        str(call.from_user.id), call.from_user.language_code if call.from_user else None
+    )
     await call.message.answer(t("profile.edit_position_prompt", lang))
     await state.set_state(EditProfile.position)
     await call.answer()
@@ -21,7 +23,9 @@ async def cb_edit_position(call: types.CallbackQuery, state: FSMContext):
 async def save_position(message: types.Message, state: FSMContext):
     position = (message.text or "").strip()
     user_id = str(message.from_user.id)
-    lang = await resolve_lang(user_id, message.from_user.language_code if message.from_user else None)
+    lang = await resolve_lang(
+        user_id, message.from_user.language_code if message.from_user else None
+    )
 
     if not position:
         await message.answer(t("profile.edit_position_empty", lang))

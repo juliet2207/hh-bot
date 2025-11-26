@@ -20,7 +20,9 @@ class CVRepository:
     def __init__(self, session: AsyncSession):
         self.session = session
 
-    async def get_cv(self, user_id: int, vacancy_id: int, doc_type: int | CVType = CVType.CV) -> CV | None:
+    async def get_cv(
+        self, user_id: int, vacancy_id: int, doc_type: int | CVType = CVType.CV
+    ) -> CV | None:
         stmt = select(CV).where(
             CV.user_id == user_id,
             CV.vacancy_id == vacancy_id,
@@ -38,7 +40,12 @@ class CVRepository:
     ) -> CV:
         existing = await self.get_cv(user_id, vacancy_id, doc_type)
         if existing:
-            stmt = update(CV).where(CV.id == existing.id).values(text=text, type=int(doc_type)).returning(CV)
+            stmt = (
+                update(CV)
+                .where(CV.id == existing.id)
+                .values(text=text, type=int(doc_type))
+                .returning(CV)
+            )
             result = await self.session.execute(stmt)
             await self.session.commit()
             return result.scalar_one()
@@ -47,5 +54,7 @@ class CVRepository:
         self.session.add(cv)
         await self.session.commit()
         await self.session.refresh(cv)
-        logger.info(f"Stored CV type={int(doc_type)} for user {user_id}, vacancy {vacancy_id}")
+        logger.info(
+            f"Stored CV type={int(doc_type)} for user {user_id}, vacancy {vacancy_id}"
+        )
         return cv

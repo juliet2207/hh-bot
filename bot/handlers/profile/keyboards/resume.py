@@ -12,6 +12,11 @@ def resume_keyboard(lang: str) -> InlineKeyboardMarkup:
                     callback_data="resume_edit",
                 )
             ],
-            [InlineKeyboardButton(text=t("profile.buttons.back_profile", lang), callback_data="resume_back_profile")],
+            [
+                InlineKeyboardButton(
+                    text=t("profile.buttons.back_profile", lang),
+                    callback_data="resume_back_profile",
+                )
+            ],
         ]
     )

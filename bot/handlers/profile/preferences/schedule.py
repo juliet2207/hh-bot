@@ -12,7 +12,11 @@ from bot.utils.logging import get_logger
 from bot.utils.time import parse_time, utc_now
 
 from . import router
-from .common import cleanup_prompt_messages, prepare_preferences_view, refresh_preferences_message
+from .common import (
+    cleanup_prompt_messages,
+    prepare_preferences_view,
+    refresh_preferences_message,
+)
 
 logger = get_logger(__name__)
 
@@ -47,7 +51,11 @@ async def cmd_vacancy_schedule(message: types.Message):
         await message.answer(t("profile.preferences_schedule_info_empty", lang))
         return
 
-    query_text = last_query.query_text if last_query and last_query.query_text else t("profile.not_set", lang)
+    query_text = (
+        last_query.query_text
+        if last_query and last_query.query_text
+        else t("profile.not_set", lang)
+    )
     await message.answer(
         t("profile.preferences_schedule_info", lang).format(
             time=schedule_time,
@@ -76,7 +84,9 @@ async def cmd_vacancy_schedule_test(message: types.Message):
         return
 
     now = utc_now()
-    success = await send_vacancies_to_user(user, message.bot, now_utc=now, force=True, mark_sent=False)
+    success = await send_vacancies_to_user(
+        user, message.bot, now_utc=now, force=True, mark_sent=False
+    )
     if success:
         await message.answer(t("profile.preferences_schedule_test_success", lang))
     else:
@@ -86,7 +96,9 @@ async def cmd_vacancy_schedule_test(message: types.Message):
 @router.callback_query(F.data == "prefs_schedule_time")
 async def cb_prefs_schedule_time(call: types.CallbackQuery, state: FSMContext):
     tg_id = str(call.from_user.id)
-    user, lang, _, _ = await prepare_preferences_view(tg_id, call.from_user.language_code if call.from_user else None)
+    user, lang, _, _ = await prepare_preferences_view(
+        tg_id, call.from_user.language_code if call.from_user else None
+    )
     if not user:
         await call.message.answer(t("profile.no_profile", lang))
         await call.answer()
@@ -105,7 +117,9 @@ async def cb_prefs_schedule_time(call: types.CallbackQuery, state: FSMContext):
 @router.callback_query(F.data == "prefs_timezone")
 async def cb_prefs_timezone(call: types.CallbackQuery, state: FSMContext):
     tg_id = str(call.from_user.id)
-    user, lang, _, _ = await prepare_preferences_view(tg_id, call.from_user.language_code if call.from_user else None)
+    user, lang, _, _ = await prepare_preferences_view(
+        tg_id, call.from_user.language_code if call.from_user else None
+    )
     if not user:
         await call.message.answer(t("profile.no_profile", lang))
         await call.answer()
@@ -130,10 +144,12 @@ async def save_schedule_time(message: types.Message, state: FSMContext):
     )
     lowered = raw.lower()
     if lowered in {"clear", "none", "null", "удалить", "сбросить"}:
-        async with await get_db_session() as session:
+        async with db_session() as session:
             repo = UserRepository(session)
             await repo.update_preferences(user_id, vacancy_schedule_time=None)
-        confirmation = await message.answer(t("profile.preferences_schedule_cleared", lang))
+        confirmation = await message.answer(
+            t("profile.preferences_schedule_cleared", lang)
+        )
         await cleanup_prompt_messages(message, confirmation, state)
         await refresh_preferences_message(message, user_id, state)
         await state.clear()
@@ -144,11 +160,13 @@ async def save_schedule_time(message: types.Message, state: FSMContext):
         await message.answer(t("profile.preferences_schedule_invalid", lang))
         return
 
-    async with await get_db_session() as session:
+    async with db_session() as session:
         repo = UserRepository(session)
         await repo.update_preferences(user_id, vacancy_schedule_time=parsed)
 
-    confirmation = await message.answer(t("profile.preferences_schedule_saved", lang).format(time=parsed))
+    confirmation = await message.answer(
+        t("profile.preferences_schedule_saved", lang).format(time=parsed)
+    )
     await cleanup_prompt_messages(message, confirmation, state)
     await refresh_preferences_message(message, user_id, state)
     await state.clear()
@@ -163,10 +181,12 @@ async def save_timezone(message: types.Message, state: FSMContext):
     )
     lowered = raw.lower()
     if lowered in {"clear", "none", "null", "удалить", "сбросить"}:
-        async with await get_db_session() as session:
+        async with db_session() as session:
             repo = UserRepository(session)
             await repo.update_preferences(user_id, timezone=None)
-        confirmation = await message.answer(t("profile.preferences_timezone_cleared", lang))
+        confirmation = await message.answer(
+            t("profile.preferences_timezone_cleared", lang)
+        )
         await cleanup_prompt_messages(message, confirmation, state)
         await refresh_preferences_message(message, user_id, state)
         await state.clear()
@@ -180,11 +200,13 @@ async def save_timezone(message: types.Message, state: FSMContext):
         await message.answer(t("profile.preferences_timezone_invalid", lang))
         return
 
-    async with await get_db_session() as session:
+    async with db_session() as session:
         repo = UserRepository(session)
         await repo.update_preferences(user_id, timezone=raw)
 
-    confirmation = await message.answer(t("profile.preferences_timezone_saved", lang).format(timezone=raw))
+    confirmation = await message.answer(
+        t("profile.preferences_timezone_saved", lang).format(timezone=raw)
+    )
     await cleanup_prompt_messages(message, confirmation, state)
     await refresh_preferences_message(message, user_id, state)
     await state.clear()

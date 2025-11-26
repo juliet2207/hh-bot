@@ -11,19 +11,29 @@ logger = get_logger(__name__)
 from . import router  # noqa: E402  # router is defined in __init__
 
 
-async def send_preferences_view(message_obj: types.Message | types.CallbackQuery, tg_id: str, edit: bool = False):
+async def send_preferences_view(
+    message_obj: types.Message | types.CallbackQuery, tg_id: str, edit: bool = False
+):
     user, lang, text, markup = await prepare_preferences_view(
         tg_id,
         message_obj.from_user.language_code if message_obj.from_user else None,
     )
     if not user:
-        target = message_obj.message if isinstance(message_obj, types.CallbackQuery) else message_obj
+        target = (
+            message_obj.message
+            if isinstance(message_obj, types.CallbackQuery)
+            else message_obj
+        )
         await target.answer(t("profile.no_profile", lang))
         if isinstance(message_obj, types.CallbackQuery):
             await message_obj.answer()
         return
 
-    target = message_obj.message if isinstance(message_obj, types.CallbackQuery) else message_obj
+    target = (
+        message_obj.message
+        if isinstance(message_obj, types.CallbackQuery)
+        else message_obj
+    )
     if isinstance(message_obj, types.CallbackQuery) and edit:
         await target.edit_text(text, parse_mode="HTML", reply_markup=markup)
         await message_obj.answer()

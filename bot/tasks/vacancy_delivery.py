@@ -12,7 +12,12 @@ from bot.handlers.search.common import build_search_keyboard
 from bot.services.hh_service import hh_service
 from bot.utils.i18n import detect_lang
 from bot.utils.logging import get_logger
-from bot.utils.search import cache_vacancies, format_search_page, perform_search, store_search_results
+from bot.utils.search import (
+    cache_vacancies,
+    format_search_page,
+    perform_search,
+    store_search_results,
+)
 
 logger = get_logger(__name__)
 
@@ -53,7 +58,7 @@ async def run_daily_vacancies(bot: Bot):
         return
 
     now_utc = datetime.now(UTC)
-    async with await get_db_session() as session:
+    async with db_session() as session:
         user_repo = UserRepository(session)
         users = await user_repo.get_users_with_schedule()
 
@@ -70,7 +75,9 @@ async def run_daily_vacancies(bot: Bot):
         logger.debug(f"Daily vacancies job finished, sent to {processed} user(s)")
 
 
-async def send_vacancies_to_user(user, bot: Bot, now_utc: datetime, force: bool = False, mark_sent: bool = True):
+async def send_vacancies_to_user(
+    user, bot: Bot, now_utc: datetime, force: bool = False, mark_sent: bool = True
+):
     prefs = user.preferences or {}
     user_tz = _get_timezone(prefs)
     now_local = now_utc.astimezone(user_tz)
@@ -119,23 +126,31 @@ async def send_vacancies_to_user(user, bot: Bot, now_utc: datetime, force: bool 
         return False
 
     vacancies_all = results.get("items", [])
-    vacancies_filtered = [vac for vac in vacancies_all if force or vac.get("id") not in sent_ids_set]
+    vacancies_filtered = [
+        vac for vac in vacancies_all if force or vac.get("id") not in sent_ids_set
+    ]
     if not vacancies_filtered:
         logger.info(f"All vacancies already sent to user {user.tg_user_id}, skipping")
         return False
 
     vacancies = vacancies_filtered[:MAX_VACANCIES_PER_USER]
     total_found = len(vacancies)
+    per_page = DAILY_PER_PAGE
 
     # Persist and cache for detail/pagination handlers
-    await store_search_results(user.id, last_query.query_text, vacancies, response_time, per_page=per_page)
+    await store_search_results(
+        user.id, last_query.query_text, vacancies, response_time, per_page=per_page
+    )
     cache_vacancies(user.id, last_query.query_text, vacancies, total_found)
 
     page = 0
-    per_page = DAILY_PER_PAGE
     total_pages = (len(vacancies) + per_page - 1) // per_page
-    text = format_search_page(last_query.query_text, vacancies, page, per_page, total_found, lang)
-    reply_markup = build_search_keyboard(last_query.query_text, page, total_pages, per_page, len(vacancies))
+    text = format_search_page(
+        last_query.query_text, vacancies, page, per_page, total_found, lang
+    )
+    reply_markup = build_search_keyboard(
+        last_query.query_text, page, total_pages, per_page, len(vacancies)
+    )
 
     try:
         await bot.send_message(

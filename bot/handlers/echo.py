@@ -50,7 +50,9 @@ async def echo_handler(message: Message):
     user_obj = None
     user_db_id = None
 
-    logger.info(f"Message received from user {user_id} (@{username}): '{text[:50]}{'...' if len(text) > 50 else ''}'")
+    logger.info(
+        f"Message received from user {user_id} (@{username}): '{text[:50]}{'...' if len(text) > 50 else ''}'"
+    )
 
     try:
         # Resolve user and language preference up front
@@ -99,10 +101,14 @@ async def echo_handler(message: Message):
             search_filters = prefs.get("search_filters", {})
             area_id = user_obj.hh_area_id if user_obj else None
 
-            results, response_time = await perform_search(text, per_page=3, area_id=area_id, filters=search_filters)
+            results, response_time = await perform_search(
+                text, per_page=3, area_id=area_id, filters=search_filters
+            )
 
             if not results or not results.get("items"):
-                logger.info(f"No vacancies found for query '{text}' from user {user_id}")
+                logger.info(
+                    f"No vacancies found for query '{text}' from user {user_id}"
+                )
 
                 # Store search query even if no results found
                 if user_db_id:
@@ -116,9 +122,13 @@ async def echo_handler(message: Message):
                                 results_count=0,
                                 response_time=response_time,
                             )
-                            logger.debug(f"Stored search query with no results for user {user_db_id}")
+                            logger.debug(
+                                f"Stored search query with no results for user {user_db_id}"
+                            )
                         except Exception as e:
-                            logger.error(f"Failed to store search query for user {user_db_id}: {e}")
+                            logger.error(
+                                f"Failed to store search query for user {user_db_id}: {e}"
+                            )
                         finally:
                             await db_session.close()
 
@@ -131,9 +141,13 @@ async def echo_handler(message: Message):
 
             # Store search query and results in database
             if user_db_id:
-                await store_search_results(user_db_id, text, vacancies[:3], response_time, per_page=3)
+                await store_search_results(
+                    user_db_id, text, vacancies[:3], response_time, per_page=3
+                )
 
-            await message.answer(response, parse_mode="HTML", disable_web_page_preview=True)
+            await message.answer(
+                response, parse_mode="HTML", disable_web_page_preview=True
+            )
             logger.success(f"Search results sent to user {user_id} for query '{text}'")
         else:
             help_message = t("search.echo_help", lang)

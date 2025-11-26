@@ -4,7 +4,11 @@ from aiogram.fsm.context import FSMContext
 
 from bot.db.database import get_db_session
 from bot.db.user_repository import UserRepository
-from bot.handlers.profile.keyboards import employment_keyboard, experience_keyboard, search_settings_keyboard
+from bot.handlers.profile.keyboards import (
+    employment_keyboard,
+    experience_keyboard,
+    search_settings_keyboard,
+)
 from bot.handlers.profile.states import EditSearchFilters
 from bot.handlers.profile.view import send_profile_view
 from bot.utils.i18n import detect_lang, t
@@ -27,24 +31,34 @@ async def get_user_and_lang(tg_id: str, fallback_lang_code: str | None = None):
     async with await get_db_session() as session:
         repo = UserRepository(session)
         user = await repo.get_user_by_tg_id(tg_id)
-    lang = detect_lang(user.language_code if user and user.language_code else fallback_lang_code)
+    lang = detect_lang(
+        user.language_code if user and user.language_code else fallback_lang_code
+    )
     return user, lang
 
 
-async def send_search_settings(message_obj: types.Message | types.CallbackQuery, tg_id: str, edit: bool = False):
+async def send_search_settings(
+    message_obj: types.Message | types.CallbackQuery, tg_id: str, edit: bool = False
+):
     user, lang = await get_user_and_lang(
         tg_id,
         message_obj.from_user.language_code if message_obj.from_user else None,
     )
     filters = (user.preferences or {}).get("search_filters", {}) if user else {}
-    text = t("profile.search_settings_title", lang).format(filters=format_search_filters(filters, lang))
+    text = t("profile.search_settings_title", lang).format(
+        filters=format_search_filters(filters, lang)
+    )
     markup = search_settings_keyboard(filters, lang)
 
     if isinstance(message_obj, types.CallbackQuery):
         try:
-            await message_obj.message.edit_text(text, parse_mode="HTML", reply_markup=markup)
+            await message_obj.message.edit_text(
+                text, parse_mode="HTML", reply_markup=markup
+            )
         except Exception as e:
-            logger.warning(f"Failed to edit search settings message for user {tg_id}: {e}")
+            logger.warning(
+                f"Failed to edit search settings message for user {tg_id}: {e}"
+            )
         await message_obj.answer()
         return
 
@@ -72,7 +86,9 @@ async def cb_search_back_profile(call: types.CallbackQuery, state: FSMContext):
 
 @router.callback_query(F.data == "search_set_salary")
 async def cb_search_set_salary(call: types.CallbackQuery, state: FSMContext):
-    _, lang = await get_user_and_lang(str(call.from_user.id), call.from_user.language_code if call.from_user else None)
+    _, lang = await get_user_and_lang(
+        str(call.from_user.id), call.from_user.language_code if call.from_user else None
+    )
     await call.message.answer(t("profile.search_set_salary_prompt", lang))
     await state.set_state(EditSearchFilters.min_salary)
     await call.answer()
@@ -82,7 +98,9 @@ async def cb_search_set_salary(call: types.CallbackQuery, state: FSMContext):
 async def save_min_salary(message: types.Message, state: FSMContext):
     raw = (message.text or "").strip()
     user_id = str(message.from_user.id)
-    _, lang = await get_user_and_lang(user_id, message.from_user.language_code if message.from_user else None)
+    _, lang = await get_user_and_lang(
+        user_id, message.from_user.language_code if message.from_user else None
+    )
 
     if raw.lower() in {"clear", "удалить", "сбросить", "none", "null"}:
         value = None

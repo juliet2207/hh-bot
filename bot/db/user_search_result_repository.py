@@ -34,7 +34,9 @@ class UserSearchResultRepository:
             )
             return user_search_result
         except Exception as e:
-            self.logger.error(f"Error creating user search result for user {user_id}: {e}")
+            self.logger.error(
+                f"Error creating user search result for user {user_id}: {e}"
+            )
             await self.session.rollback()
             raise
 
@@ -53,7 +55,9 @@ class UserSearchResultRepository:
             await self.session.commit()
 
             if result.rowcount > 0:
-                self.logger.info(f"Marked vacancy {vacancy_id} as clicked for user {user_id}")
+                self.logger.info(
+                    f"Marked vacancy {vacancy_id} as clicked for user {user_id}"
+                )
                 return True
             else:
                 self.logger.warning(
@@ -61,11 +65,15 @@ class UserSearchResultRepository:
                 )
                 return False
         except Exception as e:
-            self.logger.error(f"Error marking vacancy {vacancy_id} as clicked for user {user_id}: {e}")
+            self.logger.error(
+                f"Error marking vacancy {vacancy_id} as clicked for user {user_id}: {e}"
+            )
             await self.session.rollback()
             raise
 
-    async def bulk_create_user_search_results(self, results_data: list[dict]) -> list[UserSearchResult]:
+    async def bulk_create_user_search_results(
+        self, results_data: list[dict]
+    ) -> list[UserSearchResult]:
         """Bulk create user search result records"""
         try:
             if not results_data:
@@ -79,7 +87,9 @@ class UserSearchResultRepository:
             for usr in user_search_results:
                 await self.session.refresh(usr)
 
-            self.logger.info(f"Bulk created {len(user_search_results)} user search results")
+            self.logger.info(
+                f"Bulk created {len(user_search_results)} user search results"
+            )
             return user_search_results
         except Exception as e:
             self.logger.error(f"Error bulk creating user search results: {e}")

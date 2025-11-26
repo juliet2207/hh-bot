@@ -9,7 +9,11 @@ from bot.db.user_repository import UserRepository
 from bot.handlers.profile.keyboards import profile_keyboard
 from bot.utils.i18n import detect_lang, t
 from bot.utils.logging import get_logger
-from bot.utils.profile_helpers import build_skills_preview, format_search_filters, resume_preview
+from bot.utils.profile_helpers import (
+    build_skills_preview,
+    format_search_filters,
+    resume_preview,
+)
 
 logger = get_logger(__name__)
 router = Router()
@@ -21,7 +25,9 @@ async def send_profile_view(tg_id: str, message_obj: types.Message, edit: bool =
         user = await repo.get_user_by_tg_id(tg_id)
 
     lang = detect_lang(
-        user.language_code if user else (message_obj.from_user.language_code if message_obj.from_user else None)
+        user.language_code
+        if user
+        else (message_obj.from_user.language_code if message_obj.from_user else None)
     )
 
     if not user:
@@ -32,10 +38,18 @@ async def send_profile_view(tg_id: str, message_obj: types.Message, edit: bool =
     search_filters = prefs.get("search_filters", {})
 
     city = html.escape(user.city) if user.city else "not set"
-    desired_position = html.escape(prefs.get("desired_position", "")) if prefs.get("desired_position") else "not set"
+    desired_position = (
+        html.escape(prefs.get("desired_position", ""))
+        if prefs.get("desired_position")
+        else "not set"
+    )
     skills_list = prefs.get("skills", [])
     skills_count, skills_preview = build_skills_preview(skills_list)
-    skills = f"{skills_count} ({html.escape(skills_preview)})" if skills_count else t("profile.not_set", lang)
+    skills = (
+        f"{skills_count} ({html.escape(skills_preview)})"
+        if skills_count
+        else t("profile.not_set", lang)
+    )
     username = f"@{html.escape(user.username)}" if user.username else "not set"
     name = f"{html.escape(user.first_name or '')} {html.escape(user.last_name or '')}".strip()
     search_filters_text = format_search_filters(search_filters, lang)
@@ -88,7 +102,11 @@ async def cmd_resume(message: types.Message):
         repo = UserRepository(session)
         user = await repo.get_user_by_tg_id(tg_id)
 
-    lang = detect_lang(user.language_code if user else (message.from_user.language_code if message.from_user else None))
+    lang = detect_lang(
+        user.language_code
+        if user
+        else (message.from_user.language_code if message.from_user else None)
+    )
 
     if not user:
         await message.answer(t("profile.no_profile", lang))
@@ -101,4 +119,7 @@ async def cmd_resume(message: types.Message):
         await message.answer(t("profile.resume_missing", lang))
         return
 
-    await message.answer(f"{t('profile.resume_header', lang)}\n\n<code>{html.escape(resume)}</code>", parse_mode="HTML")
+    await message.answer(
+        f"{t('profile.resume_header', lang)}\n\n<code>{html.escape(resume)}</code>",
+        parse_mode="HTML",
+    )

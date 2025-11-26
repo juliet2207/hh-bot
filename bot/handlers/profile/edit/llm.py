@@ -15,7 +15,9 @@ logger = get_logger(__name__)
 router = Router()
 
 
-async def send_llm_menu(message_obj: types.Message | types.CallbackQuery, tg_id: str, edit: bool = False):
+async def send_llm_menu(
+    message_obj: types.Message | types.CallbackQuery, tg_id: str, edit: bool = False
+):
     user = await load_user(tg_id)
 
     lang = detect_lang(
@@ -23,7 +25,11 @@ async def send_llm_menu(message_obj: types.Message | types.CallbackQuery, tg_id:
         if user and user.language_code
         else (message_obj.from_user.language_code if message_obj.from_user else None)
     )
-    target = message_obj.message if isinstance(message_obj, types.CallbackQuery) else message_obj
+    target = (
+        message_obj.message
+        if isinstance(message_obj, types.CallbackQuery)
+        else message_obj
+    )
 
     if not user:
         await target.answer(t("profile.no_profile", lang))
@@ -63,7 +69,9 @@ async def cb_llm_menu(call: types.CallbackQuery, state: FSMContext):
 
 @router.callback_query(F.data.in_({"llm_edit", "edit_llm"}))
 async def cb_edit_llm(call: types.CallbackQuery, state: FSMContext):
-    lang = await resolve_lang(str(call.from_user.id), call.from_user.language_code if call.from_user else None)
+    lang = await resolve_lang(
+        str(call.from_user.id), call.from_user.language_code if call.from_user else None
+    )
     await call.message.answer(t("profile.edit_llm_prompt", lang), parse_mode="HTML")
     await state.set_state(EditProfile.llm)
     await call.answer()
@@ -82,7 +90,9 @@ async def cb_llm_back_profile(call: types.CallbackQuery, state: FSMContext):
 async def save_llm(message: types.Message, state: FSMContext):
     llm_raw = (message.text or "").strip()
     user_id = str(message.from_user.id)
-    lang = await resolve_lang(user_id, message.from_user.language_code if message.from_user else None)
+    lang = await resolve_lang(
+        user_id, message.from_user.language_code if message.from_user else None
+    )
 
     if not llm_raw:
         await message.answer(t("profile.edit_llm_empty", lang))
@@ -101,12 +111,16 @@ async def save_llm(message: types.Message, state: FSMContext):
         await message.answer(t("profile.edit_llm_bad_format", lang), parse_mode="HTML")
         return
 
-    await update_user_prefs(user_id, llm_settings={"model": model, "base_url": url, "api_key": key})
+    await update_user_prefs(
+        user_id, llm_settings={"model": model, "base_url": url, "api_key": key}
+    )
 
     try:
         await message.delete()
     except Exception as e:
-        logger.warning(f"Failed to delete message with LLM settings for user {user_id}: {e}")
+        logger.warning(
+            f"Failed to delete message with LLM settings for user {user_id}: {e}"
+        )
 
     await message.answer(t("profile.edit_llm_updated", lang))
     await send_llm_menu(message, user_id)

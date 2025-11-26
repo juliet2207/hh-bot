@@ -13,8 +13,12 @@ router = Router()
 
 @router.callback_query(F.data == "edit_name")
 async def cb_edit_name(call: types.CallbackQuery, state: FSMContext):
-    lang = await resolve_lang(str(call.from_user.id), call.from_user.language_code if call.from_user else None)
-    prompt = await call.message.answer(t("profile.edit_name_prompt", lang), parse_mode="HTML")
+    lang = await resolve_lang(
+        str(call.from_user.id), call.from_user.language_code if call.from_user else None
+    )
+    prompt = await call.message.answer(
+        t("profile.edit_name_prompt", lang), parse_mode="HTML"
+    )
     await state.update_data(
         name_prompt_chat_id=call.message.chat.id,
         name_prompt_message_id=prompt.message_id,
@@ -28,7 +32,9 @@ async def cb_edit_name(call: types.CallbackQuery, state: FSMContext):
 async def save_name(message: types.Message, state: FSMContext):
     name_raw = (message.text or "").strip()
     user_id = str(message.from_user.id)
-    lang = await resolve_lang(user_id, message.from_user.language_code if message.from_user else None)
+    lang = await resolve_lang(
+        user_id, message.from_user.language_code if message.from_user else None
+    )
 
     if is_clear_command(name_raw):
         first, last = None, None
@@ -61,7 +67,9 @@ async def save_name(message: types.Message, state: FSMContext):
 
     if prompt_message_id and prompt_chat_id:
         try:
-            await message.bot.delete_message(chat_id=prompt_chat_id, message_id=prompt_message_id)
+            await message.bot.delete_message(
+                chat_id=prompt_chat_id, message_id=prompt_message_id
+            )
         except Exception as e:
             logger.debug(f"Failed to delete name prompt message: {e}")
 
