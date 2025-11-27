@@ -71,3 +71,7 @@ documents/
 tmp/
 temp/
 *.zip
+
+# --- NGinx Personal Setting ---
+
+hh-bot.conf

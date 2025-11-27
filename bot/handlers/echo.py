@@ -5,15 +5,11 @@ import html
 from aiogram import Router
 from aiogram.types import Message
 
-from bot.services import search_service, user_service
+from bot.handlers.search.run_search import run_search_and_reply
+from bot.services import user_service
 from bot.services.hh_service import hh_service
 from bot.utils.i18n import detect_lang, t
 from bot.utils.logging import get_logger
-from bot.utils.search import (
-    format_search_response,
-    perform_search,
-    store_search_results,
-)
 from bot.utils.text import suggest_command
 
 logger = get_logger(__name__)
@@ -87,53 +83,7 @@ async def echo_handler(message: Message):
                 return
 
             logger.debug(f"Treating message as search query for user {user_id}")
-            prefs = user_obj.preferences if user_obj and user_obj.preferences else {}
-            search_filters = prefs.get("search_filters", {})
-            area_id = user_obj.hh_area_id if user_obj else None
-
-            results, response_time = await perform_search(
-                text, per_page=3, area_id=area_id, filters=search_filters
-            )
-
-            if not results or not results.get("items"):
-                logger.info(
-                    f"No vacancies found for query '{text}' from user {user_id}"
-                )
-
-                # Store search query even if no results found
-                if user_db_id:
-                    try:
-                        await search_service.create_search_query(
-                            user_id=user_db_id,
-                            query_text=text,
-                            results_count=0,
-                            response_time=response_time,
-                        )
-                        logger.debug(
-                            f"Stored search query with no results for user {user_db_id}"
-                        )
-                    except Exception as e:
-                        logger.error(
-                            f"Failed to store search query for user {user_db_id}: {e}"
-                        )
-
-                await message.answer(t("search.no_results", lang).format(query=text))
-                return
-
-            # Format and send results
-            vacancies = results["items"]
-            response = await format_search_response(text, results, lang, max_results=3)
-
-            # Store search query and results in database
-            if user_db_id:
-                await store_search_results(
-                    user_db_id, text, vacancies[:3], response_time, per_page=3
-                )
-
-            await message.answer(
-                response, parse_mode="HTML", disable_web_page_preview=True
-            )
-            logger.success(f"Search results sent to user {user_id} for query '{text}'")
+            await run_search_and_reply(message, user_obj, user_db_id, text, lang)
         else:
             help_message = t("search.echo_help", lang)
             await message.answer(help_message)

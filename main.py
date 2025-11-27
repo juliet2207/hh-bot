@@ -1,7 +1,10 @@
 import asyncio
 import os
+from urllib.parse import urlparse
 
 from aiogram import Bot, Dispatcher
+from aiogram.webhook.aiohttp_server import SimpleRequestHandler, setup_application
+from aiohttp import web
 
 from bot.config import settings
 from bot.db.database import close_database, init_database
@@ -68,6 +71,49 @@ async def on_shutdown(bot: Bot):
     except Exception as e:
         logger.error(f"Error closing DB: {e}")
 
+    # Remove webhook in prod
+    if settings.ENV.lower() == "prod":
+        try:
+            await bot.delete_webhook(drop_pending_updates=True)
+            logger.info("Webhook deleted")
+        except Exception as e:
+            logger.error(f"Failed to delete webhook: {e}")
+
+
+async def run_webhook(bot: Bot, dp: Dispatcher):
+    if not settings.WEBHOOK_URL:
+        raise RuntimeError("WEBHOOK_URL is not configured for prod environment")
+
+    parsed = urlparse(settings.WEBHOOK_URL)
+    webhook_path = parsed.path or "/webhook"
+
+    app = web.Application()
+    SimpleRequestHandler(dp, bot).register(app, path=webhook_path)
+    setup_application(app, dp, bot=bot)
+
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, host=settings.WEBAPP_HOST, port=settings.WEBAPP_PORT)
+    await site.start()
+    logger.info(
+        f"Webhook server started at {settings.WEBAPP_HOST}:{settings.WEBAPP_PORT}{webhook_path}"
+    )
+
+    await bot.set_webhook(
+        settings.WEBHOOK_URL,
+        secret_token=settings.WEBHOOK_SECRET,
+        drop_pending_updates=True,
+    )
+    logger.success(f"Webhook set to {settings.WEBHOOK_URL}")
+
+    try:
+        await asyncio.Event().wait()
+    finally:
+        try:
+            await runner.cleanup()
+        except Exception as e:
+            logger.error(f"Failed to cleanup webhook runner: {e}")
+
 
 async def main():
     bot = Bot(token=settings.TG_BOT_API_KEY)
@@ -78,7 +124,11 @@ async def main():
     dp.startup.register(on_startup)
     dp.shutdown.register(on_shutdown)
 
-    await dp.start_polling(bot)
+    # Webhook mode for prod, polling otherwise
+    if settings.ENV.lower() == "prod":
+        await run_webhook(bot, dp)
+    else:
+        await dp.start_polling(bot)
 
 
 if __name__ == "__main__":

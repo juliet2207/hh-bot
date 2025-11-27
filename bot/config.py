@@ -23,6 +23,12 @@ class Settings(BaseSettings):
     LOG_LEVEL: str = "DEBUG"
     ENV: str = Field(default="dev")  # dev / prod / staging
 
+    # --- Webhook (prod only) ---
+    WEBHOOK_URL: str | None = None
+    WEBHOOK_SECRET: str | None = None
+    WEBAPP_HOST: str = "127.0.0.1"
+    WEBAPP_PORT: int = 8271
+
     model_config = SettingsConfigDict(
         env_file=".env", env_file_encoding="utf-8", extra="ignore"
     )

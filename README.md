@@ -33,6 +33,11 @@ LLM_API_URL=https://api.openai.com/v1
 LLM_MODEL=gpt-4o-mini
 LOG_LEVEL=INFO
 ENV=dev
+# Webhook (используется только при ENV=prod)
+WEBHOOK_URL=https://bender.pavelveter.com/hh-bot
+WEBHOOK_SECRET=change-me
+WEBAPP_HOST=0.0.0.0
+WEBAPP_PORT=8271
 ```
    URL к базе можно задавать в формате `postgres://...` — драйвер автоматически конвертируется в `postgresql+asyncpg://` и прокидывает SSL‑параметры.
 3) Установите зависимости через [uv](https://github.com/astral-sh/uv):
@@ -63,4 +68,5 @@ uv run python main.py
 - Переводы лежат в `i18n/`, промпты для LLM — в `prompts/` (без ключей).
 - Логи пишутся в `logs/`; директория создаётся при старте.
 - Планировщик запускается вместе с ботом, джоб обновляет подборки каждую минуту.
+- В проде при `ENV=prod` бот работает через webhook (`WEBHOOK_URL` + `WEBHOOK_SECRET`); в dev/stage используется polling.
 - При работе с ключами и токенами используйте переменные окружения и не вставляйте реальные значения в код или README.
