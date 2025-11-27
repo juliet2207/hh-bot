@@ -1,0 +1,42 @@
+name: Deploy to VPS
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Ref to deploy (branch, tag, or commit SHA)"
+        required: false
+        default: "main"
+
+concurrency:
+  group: deploy-hh-bot
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (for metadata only)
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT || 22 }}
+          script: |
+            set -euo pipefail
+            cd ~/hh-bot
+            git fetch --all --prune
+            # Force sync to remote main (handles force-push/divergence)
+            git checkout -B main origin/main
+            git reset --hard origin/main
+            docker compose pull || true
+            docker compose down
+            docker compose up -d --build

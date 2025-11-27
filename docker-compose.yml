@@ -1,0 +1,12 @@
+version: "3.9"
+
+services:
+  bot:
+    build: .
+    container_name: hh-bot
+    env_file:
+      - .env
+    ports:
+      - "8271:8271"  # webhook port (used only when ENV=prod)
+    restart: unless-stopped
+    command: ["uv", "run", "main.py"]
