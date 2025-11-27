@@ -2,6 +2,7 @@ from bot.handlers.search.common import VACANCIES_PER_PAGE, build_search_keyboard
 from bot.services import search_service
 from bot.utils.i18n import t
 from bot.utils.logging import get_logger
+from bot.utils.profile_helpers import format_search_filters
 from bot.utils.search import (
     cache_vacancies,
     format_search_page,
@@ -36,7 +37,20 @@ async def run_search_and_reply(
             except Exception as e:
                 logger.error(f"Failed to store search query for user {user_db_id}: {e}")
 
-        await message.answer(t("search.no_results", lang).format(query=query))
+        filters_text = format_search_filters(search_filters, lang)
+        city_text = (
+            user_obj.city if user_obj and user_obj.city else t("profile.not_set", lang)
+        )
+        details = (
+            f"\n\n<b>{t('profile.search_settings_title', lang).splitlines()[0]}</b>\n"
+            f"{filters_text}\n"
+            f"{t('location.current_city', lang, city=city_text)}"
+        )
+
+        await message.answer(
+            t("search.no_results", lang).format(query=query) + details,
+            parse_mode="HTML",
+        )
         return
 
     vacancies = results["items"]

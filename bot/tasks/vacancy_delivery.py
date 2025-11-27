@@ -26,7 +26,7 @@ MAX_VACANCIES_PER_USER = 20
 DAILY_PER_PAGE = 5
 
 
-def _already_sent_today(prefs: dict, now_local: datetime) -> bool:
+def _already_sent_today(prefs: dict, now_local: datetime, schedule_time: str) -> bool:
     last_sent_raw = prefs.get("vacancy_last_sent_at")
     if not last_sent_raw:
         return False
@@ -34,7 +34,13 @@ def _already_sent_today(prefs: dict, now_local: datetime) -> bool:
         last_dt = datetime.fromisoformat(last_sent_raw)
         if last_dt.tzinfo is None:
             last_dt = last_dt.replace(tzinfo=UTC)
-        return last_dt.astimezone(now_local.tzinfo).date() == now_local.date()
+        last_local = last_dt.astimezone(now_local.tzinfo)
+        # If schedule time changed for today, allow sending again
+        if last_local.strftime("%Y-%m-%d") == now_local.strftime("%Y-%m-%d"):
+            if last_local.strftime("%H:%M") != schedule_time:
+                return False
+            return True
+        return False
     except Exception:
         return False
 
@@ -86,7 +92,7 @@ async def send_vacancies_to_user(
     if not force and schedule_time != current_time:
         return False
 
-    if not force and _already_sent_today(prefs, now_local):
+    if not force and _already_sent_today(prefs, now_local, schedule_time):
         return False
 
     sent_ids = prefs.get("sent_vacancy_ids") or []
