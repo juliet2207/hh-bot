@@ -8,6 +8,7 @@ def build_cv_prompt(
     user_resume: str | None,
     user_skills: list[str] | None,
     user_prompt: str | None = None,
+    candidate_name: str | None = None,
     lang: str = "en",
 ) -> list[dict[str, str]]:
     vacancy_text = format_vacancy_details(vacancy, 1, 1, lang)
@@ -18,11 +19,15 @@ def build_cv_prompt(
     extra = f"\nUser additional requirements: {user_prompt}" if user_prompt else ""
     prompt = prompt_template.format(user_prompt_extra=extra)
 
-    user_context = (
+    user_context_parts = []
+    if candidate_name:
+        user_context_parts.append(f"Candidate name: {candidate_name}")
+    user_context_parts.append(
         f"User skills: {skills_text}" if skills_text else "User skills not provided"
     )
     if resume_text:
-        user_context += f"\nUser base resume:\n{resume_text}"
+        user_context_parts.append(f"User base resume:\n{resume_text}")
+    user_context = "\n".join(user_context_parts)
 
     return [
         {"role": "system", "content": prompt},
@@ -35,6 +40,7 @@ def build_cover_letter_prompt(
     user_resume: str | None,
     user_skills: list[str] | None,
     user_prompt: str | None = None,
+    candidate_name: str | None = None,
     lang: str = "en",
 ) -> list[dict[str, str]]:
     vacancy_text = format_vacancy_details(vacancy, 1, 1, lang)
@@ -46,6 +52,8 @@ def build_cover_letter_prompt(
     prompt = prompt_template.format(user_prompt_extra=extra)
 
     context_parts = []
+    if candidate_name:
+        context_parts.append(f"Candidate name: {candidate_name}")
     if skills_text:
         context_parts.append(f"User skills: {skills_text}")
     if resume_text:

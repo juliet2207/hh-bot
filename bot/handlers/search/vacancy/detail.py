@@ -1,3 +1,5 @@
+import html
+
 from aiogram import Router
 from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup
 
@@ -77,7 +79,8 @@ async def vacancy_detail_handler(callback: CallbackQuery):
                 )
 
             if cv:
-                cv_preview = (cv.text[:400] + "…") if len(cv.text) > 400 else cv.text
+                cv_preview = cv.text[:400] + "…" if len(cv.text) > 400 else cv.text
+                cv_preview = html.escape(cv_preview)
                 preview_blocks.append(
                     t("search.vacancy_detail.cached_preview", lang).format(
                         preview=cv_preview
@@ -105,10 +108,11 @@ async def vacancy_detail_handler(callback: CallbackQuery):
 
             if cover_letter:
                 cover_preview = (
-                    (cover_letter.text[:400] + "…")
+                    cover_letter.text[:400] + "…"
                     if len(cover_letter.text) > 400
                     else cover_letter.text
                 )
+                cover_preview = html.escape(cover_preview)
                 preview_blocks.append(
                     t("search.vacancy_detail.cached_cover_preview", lang).format(
                         preview=cover_preview

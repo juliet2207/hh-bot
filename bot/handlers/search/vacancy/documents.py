@@ -1,4 +1,5 @@
 import asyncio
+import html
 
 from aiogram import Router
 from aiogram.types import CallbackQuery
@@ -157,8 +158,9 @@ async def vacancy_cv_handler(callback: CallbackQuery):
 
         if action in {"send", "generate"} and existing_doc and action != "regen":
             header, _ = format_document_header(vacancy, lang, doc_type)
+            escaped = html.escape(existing_doc.text)
             await callback.message.answer(
-                f"{header}\n\n{existing_doc.text}",
+                f"{header}\n<pre>{escaped}</pre>",
                 disable_web_page_preview=True,
                 parse_mode="HTML",
             )
@@ -184,8 +186,20 @@ async def vacancy_cv_handler(callback: CallbackQuery):
             )
             return
 
+        candidate_name_parts = [
+            part
+            for part in [
+                (user_obj.first_name if user_obj else None),
+                (user_obj.last_name if user_obj else None),
+            ]
+            if part
+        ]
+        candidate_name = " ".join(candidate_name_parts) or (
+            user_obj.username if user_obj and user_obj.username else None
+        )
+
         messages = doc_meta["prompt_builder"](
-            vacancy, user_resume, user_skills, user_prompt, lang
+            vacancy, user_resume, user_skills, user_prompt, candidate_name, lang
         )
         generating_msg = await callback.message.answer(
             t(doc_meta["generating_key"], lang)
@@ -221,14 +235,15 @@ async def vacancy_cv_handler(callback: CallbackQuery):
 
         header, _ = format_document_header(vacancy, lang, doc_type)
         try:
+            escaped = html.escape(str(doc_text))
             await generating_msg.edit_text(
-                f"{header}\n\n{doc_text}",
+                f"{header}\n<pre>{escaped}</pre>",
                 disable_web_page_preview=True,
                 parse_mode="HTML",
             )
         except Exception:
             await callback.message.answer(
-                f"{header}\n\n{doc_text}",
+                f"{header}\n<pre>{html.escape(str(doc_text))}</pre>",
                 disable_web_page_preview=True,
                 parse_mode="HTML",
             )

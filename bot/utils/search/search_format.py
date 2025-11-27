@@ -1,5 +1,7 @@
 """Formatting helpers for search responses."""
 
+import html
+
 from bot.utils.i18n import t
 from bot.utils.logging import get_logger
 
@@ -33,19 +35,19 @@ def format_salary(salary: dict | None, lang: str) -> str:
 def format_vacancy(vacancy: dict, position: int, lang: str) -> str:
     """Format a single vacancy for display."""
     fallback = t("search.common.not_available", lang)
-    name = vacancy.get("name") or fallback
+    name = html.escape(vacancy.get("name") or fallback)
 
     employer = vacancy.get("employer", {})
-    company = employer.get("name") if isinstance(employer, dict) else None
-    company = company or fallback
+    company = (employer.get("name") if isinstance(employer, dict) else None) or fallback
+    company = html.escape(company)
 
     salary_str = format_salary(vacancy.get("salary"), lang)
 
     area = vacancy.get("area", {})
-    location = area.get("name") if isinstance(area, dict) else None
-    location = location or fallback
+    location = (area.get("name") if isinstance(area, dict) else None) or fallback
+    location = html.escape(location)
 
-    url = vacancy.get("alternate_url") or "https://hh.ru"
+    url = html.escape(vacancy.get("alternate_url") or "https://hh.ru")
 
     return (
         f"{position}. <b>{name}</b>\n"
@@ -61,15 +63,15 @@ def format_vacancy_details(
 ) -> str:
     """Format detailed view for a single vacancy."""
     fallback = t("search.common.not_available", lang)
-    name = vacancy.get("name") or fallback
+    name = html.escape(vacancy.get("name") or fallback)
     employer = vacancy.get("employer", {})
-    company = employer.get("name") if isinstance(employer, dict) else None
-    company = company or fallback
+    company = (employer.get("name") if isinstance(employer, dict) else None) or fallback
+    company = html.escape(company)
     salary_str = format_salary(vacancy.get("salary"), lang)
     area = vacancy.get("area", {})
-    location = area.get("name") if isinstance(area, dict) else None
-    location = location or fallback
-    url = vacancy.get("alternate_url") or "https://hh.ru"
+    location = (area.get("name") if isinstance(area, dict) else None) or fallback
+    location = html.escape(location)
+    url = html.escape(vacancy.get("alternate_url") or "https://hh.ru")
     description = vacancy.get("description") or vacancy.get("snippet", {}).get(
         "requirement", ""
     )
@@ -87,6 +89,7 @@ def format_vacancy_details(
         if body_parts
         else t("search.vacancy_detail.no_description", lang)
     )
+    body_text = html.escape(body_text)
 
     return (
         f"{t('search.vacancy_detail.title', lang).format(position=position, total=total_found)}\n\n"
