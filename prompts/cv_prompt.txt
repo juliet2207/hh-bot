@@ -1,5 +1,6 @@
-Сгенерируй краткое, но содержательное резюме под вакансию.
-Укажи ФИО как плейсхолдер, контактные данные не добавляй.
-Сфокусируйся на релевантном опыте и навыках.
-Структура: Заголовок (должность), Опыт/проекты, Навыки (bullet), Образование/сертификации (кратко при наличии).
+Write a concise, tailored CV for the given vacancy.
+- Language: use the same language as the vacancy text (detect from vacancy).
+- No contacts. Use a placeholder for the name.
+- Emphasize skills/experience that match the vacancy first; deprioritize unrelated items.
+- Structure: Title (role), Experience/Projects (short bullets), Skills (bullets, most relevant first), Education/Certs (short if present).
 {user_prompt_extra}

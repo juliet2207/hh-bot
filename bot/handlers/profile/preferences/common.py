@@ -1,9 +1,8 @@
 from aiogram import types
 from aiogram.fsm.context import FSMContext
 
-from bot.db.database import get_db_session
-from bot.db.user_repository import UserRepository
 from bot.handlers.profile.keyboards import preferences_keyboard
+from bot.services import user_service
 from bot.utils.i18n import detect_lang, t
 from bot.utils.logging import get_logger
 
@@ -11,9 +10,7 @@ logger = get_logger(__name__)
 
 
 async def prepare_preferences_view(tg_id: str, fallback_lang: str | None = None):
-    async with await get_db_session() as session:
-        repo = UserRepository(session)
-        user = await repo.get_user_by_tg_id(tg_id)
+    user = await user_service.get_user_by_tg_id(tg_id)
 
     lang = detect_lang(
         user.language_code if user and user.language_code else fallback_lang

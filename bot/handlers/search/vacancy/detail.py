@@ -1,10 +1,10 @@
 from aiogram import Router
 from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup
 
-from bot.db import CVRepository, CVType
-from bot.db.database import db_session
+from bot.db import CVType
 from bot.handlers.search.common import VACANCIES_PER_PAGE, safe_answer
 from bot.handlers.search.helpers import get_or_create_user_lang
+from bot.services import cv_service
 from bot.utils.i18n import detect_lang, t
 from bot.utils.logging import get_logger
 from bot.utils.search import format_vacancy_details, get_vacancies_from_db
@@ -66,18 +66,15 @@ async def vacancy_detail_handler(callback: CallbackQuery):
         if vacancy_db_id and user_db_id:
             cv = None
             cover_letter = None
-            async with db_session() as session:
-                if session:
-                    try:
-                        cv_repo = CVRepository(session)
-                        cv = await cv_repo.get_cv(user_db_id, vacancy_db_id, CVType.CV)
-                        cover_letter = await cv_repo.get_cv(
-                            user_db_id, vacancy_db_id, CVType.COVER_LETTER
-                        )
-                    except Exception as e:
-                        logger.error(
-                            f"Failed to fetch CV/cover cache for user {user_db_id}, vacancy {vacancy_db_id}: {e}"
-                        )
+            try:
+                cv = await cv_service.get_cv(user_db_id, vacancy_db_id, CVType.CV)
+                cover_letter = await cv_service.get_cv(
+                    user_db_id, vacancy_db_id, CVType.COVER_LETTER
+                )
+            except Exception as e:
+                logger.error(
+                    f"Failed to fetch CV/cover cache for user {user_db_id}, vacancy {vacancy_db_id}: {e}"
+                )
 
             if cv:
                 cv_preview = (cv.text[:400] + "…") if len(cv.text) > 400 else cv.text

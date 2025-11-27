@@ -5,8 +5,7 @@ import html
 from aiogram import Router
 from aiogram.types import Message
 
-from bot.db import SearchQueryRepository, UserRepository
-from bot.db.database import get_db_session
+from bot.services import search_service, user_service
 from bot.services.hh_service import hh_service
 from bot.utils.i18n import detect_lang, t
 from bot.utils.logging import get_logger
@@ -56,23 +55,14 @@ async def echo_handler(message: Message):
 
     try:
         # Resolve user and language preference up front
-        db_session = await get_db_session()
-        if db_session:
-            try:
-                user_repo = UserRepository(db_session)
-                user_obj = await user_repo.get_or_create_user(
-                    tg_user_id=user_id,
-                    username=message.from_user.username,
-                    first_name=message.from_user.first_name,
-                    last_name=message.from_user.last_name,
-                    language_code=message.from_user.language_code,
-                )
-                user_db_id = user_obj.id
-                lang = detect_lang(user_obj.language_code)
-            except Exception as e:
-                logger.error(f"Failed to get user {user_id} from database: {e}")
-            finally:
-                await db_session.close()
+        user_obj, lang = await user_service.get_or_create_user_with_lang(
+            tg_user_id=user_id,
+            username=message.from_user.username,
+            first_name=message.from_user.first_name,
+            last_name=message.from_user.last_name,
+            language_code=message.from_user.language_code,
+        )
+        user_db_id = user_obj.id if user_obj else None
 
         stripped = text.strip()
         if stripped.startswith("/"):
@@ -112,25 +102,20 @@ async def echo_handler(message: Message):
 
                 # Store search query even if no results found
                 if user_db_id:
-                    db_session = await get_db_session()
-                    if db_session:
-                        try:
-                            search_repo = SearchQueryRepository(db_session)
-                            await search_repo.create_search_query(
-                                user_id=user_db_id,
-                                query_text=text,
-                                results_count=0,
-                                response_time=response_time,
-                            )
-                            logger.debug(
-                                f"Stored search query with no results for user {user_db_id}"
-                            )
-                        except Exception as e:
-                            logger.error(
-                                f"Failed to store search query for user {user_db_id}: {e}"
-                            )
-                        finally:
-                            await db_session.close()
+                    try:
+                        await search_service.create_search_query(
+                            user_id=user_db_id,
+                            query_text=text,
+                            results_count=0,
+                            response_time=response_time,
+                        )
+                        logger.debug(
+                            f"Stored search query with no results for user {user_db_id}"
+                        )
+                    except Exception as e:
+                        logger.error(
+                            f"Failed to store search query for user {user_db_id}: {e}"
+                        )
 
                 await message.answer(t("search.no_results", lang).format(query=text))
                 return

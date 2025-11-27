@@ -2,10 +2,8 @@ from aiogram import F, types
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 
-from bot.db.database import db_session
-from bot.db.search_query_repository import SearchQueryRepository
-from bot.db.user_repository import UserRepository
 from bot.handlers.profile.states import EditPreferences
+from bot.services import search_service, user_service
 from bot.tasks.vacancy_delivery import send_vacancies_to_user
 from bot.utils.i18n import detect_lang, t
 from bot.utils.logging import get_logger
@@ -24,9 +22,7 @@ logger = get_logger(__name__)
 @router.message(Command("vacancy_schedule"))
 async def cmd_vacancy_schedule(message: types.Message):
     tg_id = str(message.from_user.id)
-    async with db_session() as session:
-        user_repo = UserRepository(session)
-        user = await user_repo.get_user_by_tg_id(tg_id)
+    user = await user_service.get_user_by_tg_id(tg_id)
 
     lang = detect_lang(
         user.language_code
@@ -43,9 +39,7 @@ async def cmd_vacancy_schedule(message: types.Message):
     tz = prefs.get("timezone") or "Europe/Moscow"
     last_sent = prefs.get("vacancy_last_sent_at") or t("profile.not_set", lang)
 
-    async with db_session() as session:
-        sq_repo = SearchQueryRepository(session)
-        last_query = await sq_repo.get_latest_search_query_any(user.id)
+    last_query = await search_service.get_latest_search_query_any(user.id)
 
     if not schedule_time:
         await message.answer(t("profile.preferences_schedule_info_empty", lang))
@@ -70,9 +64,7 @@ async def cmd_vacancy_schedule(message: types.Message):
 @router.message(Command("vacancy_schedule_test"))
 async def cmd_vacancy_schedule_test(message: types.Message):
     tg_id = str(message.from_user.id)
-    async with db_session() as session:
-        user_repo = UserRepository(session)
-        user = await user_repo.get_user_by_tg_id(tg_id)
+    user = await user_service.get_user_by_tg_id(tg_id)
 
     lang = detect_lang(
         user.language_code
@@ -144,9 +136,7 @@ async def save_schedule_time(message: types.Message, state: FSMContext):
     )
     lowered = raw.lower()
     if lowered in {"clear", "none", "null", "удалить", "сбросить"}:
-        async with db_session() as session:
-            repo = UserRepository(session)
-            await repo.update_preferences(user_id, vacancy_schedule_time=None)
+        await user_service.update_preferences(user_id, vacancy_schedule_time=None)
         confirmation = await message.answer(
             t("profile.preferences_schedule_cleared", lang)
         )
@@ -160,9 +150,7 @@ async def save_schedule_time(message: types.Message, state: FSMContext):
         await message.answer(t("profile.preferences_schedule_invalid", lang))
         return
 
-    async with db_session() as session:
-        repo = UserRepository(session)
-        await repo.update_preferences(user_id, vacancy_schedule_time=parsed)
+    await user_service.update_preferences(user_id, vacancy_schedule_time=parsed)
 
     confirmation = await message.answer(
         t("profile.preferences_schedule_saved", lang).format(time=parsed)
@@ -181,9 +169,7 @@ async def save_timezone(message: types.Message, state: FSMContext):
     )
     lowered = raw.lower()
     if lowered in {"clear", "none", "null", "удалить", "сбросить"}:
-        async with db_session() as session:
-            repo = UserRepository(session)
-            await repo.update_preferences(user_id, timezone=None)
+        await user_service.update_preferences(user_id, timezone=None)
         confirmation = await message.answer(
             t("profile.preferences_timezone_cleared", lang)
         )
@@ -200,9 +186,7 @@ async def save_timezone(message: types.Message, state: FSMContext):
         await message.answer(t("profile.preferences_timezone_invalid", lang))
         return
 
-    async with db_session() as session:
-        repo = UserRepository(session)
-        await repo.update_preferences(user_id, timezone=raw)
+    await user_service.update_preferences(user_id, timezone=raw)
 
     confirmation = await message.answer(
         t("profile.preferences_timezone_saved", lang).format(timezone=raw)

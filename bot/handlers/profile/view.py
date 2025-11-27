@@ -3,10 +3,8 @@ import html
 from aiogram import Router, types
 from aiogram.filters import Command
 
-from bot.db.database import get_db_session
-from bot.db.search_query_repository import SearchQueryRepository
-from bot.db.user_repository import UserRepository
 from bot.handlers.profile.keyboards import profile_keyboard
+from bot.services import search_service, user_service
 from bot.utils.i18n import detect_lang, t
 from bot.utils.logging import get_logger
 from bot.utils.profile_helpers import (
@@ -20,9 +18,7 @@ router = Router()
 
 
 async def send_profile_view(tg_id: str, message_obj: types.Message, edit: bool = False):
-    async with await get_db_session() as session:
-        repo = UserRepository(session)
-        user = await repo.get_user_by_tg_id(tg_id)
+    user = await user_service.get_user_by_tg_id(tg_id)
 
     lang = detect_lang(
         user.language_code
@@ -55,11 +51,9 @@ async def send_profile_view(tg_id: str, message_obj: types.Message, edit: bool =
     search_filters_text = format_search_filters(search_filters, lang)
     last_search = t("profile.not_set", lang)
     try:
-        async with await get_db_session() as session:
-            sq_repo = SearchQueryRepository(session)
-            latest = await sq_repo.get_latest_search_query_any(user.id)
-            if latest and latest.query_text:
-                last_search = html.escape(latest.query_text)
+        latest = await search_service.get_latest_search_query_any(user.id)
+        if latest and latest.query_text:
+            last_search = html.escape(latest.query_text)
     except Exception as e:
         logger.warning(f"Failed to load last search for user {user.id}: {e}")
 
@@ -98,9 +92,7 @@ async def cmd_profile(message: types.Message):
 async def cmd_resume(message: types.Message):
     tg_id = str(message.from_user.id)
 
-    async with await get_db_session() as session:
-        repo = UserRepository(session)
-        user = await repo.get_user_by_tg_id(tg_id)
+    user = await user_service.get_user_by_tg_id(tg_id)
 
     lang = detect_lang(
         user.language_code

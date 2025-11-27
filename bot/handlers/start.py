@@ -4,8 +4,7 @@ from aiogram import Router
 from aiogram.filters import Command
 from aiogram.types import Message
 
-from bot.db import UserRepository
-from bot.db.database import get_db_session
+from bot.services import user_service
 from bot.services.hh_service import hh_service
 from bot.services.openai_service import openai_service
 from bot.utils.i18n import detect_lang, t
@@ -42,27 +41,21 @@ async def start_handler(message: Message):
 
     try:
         # Create or update user in database
-        db_session = await get_db_session()
-        if db_session:
-            try:
-                user_repo = UserRepository(db_session)
-                user = await user_repo.get_or_create_user(
-                    tg_user_id=user_id,
-                    username=username,
-                    first_name=message.from_user.first_name,
-                    last_name=message.from_user.last_name,
-                    language_code=language_code,
-                )
+        try:
+            user = await user_service.get_or_create_user(
+                tg_user_id=user_id,
+                username=username,
+                first_name=message.from_user.first_name,
+                last_name=message.from_user.last_name,
+                language_code=language_code,
+            )
+            if user and user.language_code:
                 lang = detect_lang(user.language_code)
-                logger.debug(
-                    f"User {user_id} database record updated/created with ID {user.id}"
-                )
-            except Exception as e:
-                logger.error(f"Failed to update user {user_id} in database: {e}")
-            finally:
-                await db_session.close()
-        else:
-            logger.warning(f"Could not get database session for user {user_id}")
+            logger.debug(
+                f"User {user_id} database record updated/created with ID {user.id if user else 'N/A'}"
+            )
+        except Exception as e:
+            logger.error(f"Failed to update user {user_id} in database: {e}")
 
         commands_list = t("start.commands_list", lang)
         tips = t("start.tips", lang)

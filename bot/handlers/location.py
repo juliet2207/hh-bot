@@ -4,8 +4,7 @@ from aiogram import Router
 from aiogram.filters import Command
 from aiogram.types import Message
 
-from bot.db import UserRepository
-from bot.db.database import get_db_session
+from bot.services import user_service
 from bot.services.hh_service import hh_service
 from bot.utils.i18n import detect_lang, t
 from bot.utils.logging import get_logger
@@ -39,20 +38,14 @@ async def location_handler(message: Message):
         f"Location command received from user {user_id} (@{username}) with city: '{city_name}'"
     )
 
-    db_session = await get_db_session()
-    if not db_session:
-        await message.answer(t("location.db_unavailable", lang))
-        return
-
     try:
-        user_repo = UserRepository(db_session)
-        user = await user_repo.get_user_by_tg_id(user_id)
+        user = await user_service.get_user_by_tg_id(user_id)
         if user and user.language_code:
             lang = detect_lang(user.language_code)
 
         # If no city provided, show current city or help
         if not city_name:
-            city_info = await user_repo.get_user_city(user_id)
+            city_info = await user_service.get_user_city(user_id)
             if city_info and city_info[0]:
                 await message.answer(
                     t(
@@ -71,7 +64,7 @@ async def location_handler(message: Message):
 
         # Handle clear command
         if city_name.lower() in ["clear", "удалить", "сбросить", "none", "null"]:
-            success = await user_repo.update_user_city(user_id, None, None)
+            success = await user_service.update_user_city(user_id, None, None)
             if success:
                 await message.answer(t("location.cleared", lang))
             else:
@@ -92,7 +85,7 @@ async def location_handler(message: Message):
             return
 
         # Update user's city
-        success = await user_repo.update_user_city(user_id, city_name, area_id)
+        success = await user_service.update_user_city(user_id, city_name, area_id)
         if success:
             await message.answer(
                 t("location.set", lang).format(city=city_name),
@@ -107,5 +100,3 @@ async def location_handler(message: Message):
     except Exception as e:
         logger.error(f"Failed to handle location command for user {user_id}: {e}")
         await message.answer(t("location.error_processing", lang))
-    finally:
-        await db_session.close()

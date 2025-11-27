@@ -29,11 +29,11 @@ def main():
     total_lines = 0
     for path in files:
         try:
-            with open(path, "r", encoding="utf-8", errors="ignore") as fh:
+            with open(path, encoding="utf-8", errors="ignore") as fh:
                 for _ in fh:
                     total_lines += 1
-        except Exception:
-            continue
+        except Exception as e:
+            print(f"Skipping {path}: {e}", file=sys.stderr)
 
     print(f"{total_lines} lines in {len(files)} py-files")
 

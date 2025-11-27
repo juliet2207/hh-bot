@@ -2,8 +2,6 @@ from aiogram import F, Router, types
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 
-from bot.db.database import get_db_session
-from bot.db.user_repository import UserRepository
 from bot.handlers.profile.keyboards import (
     employment_keyboard,
     experience_keyboard,
@@ -11,6 +9,7 @@ from bot.handlers.profile.keyboards import (
 )
 from bot.handlers.profile.states import EditSearchFilters
 from bot.handlers.profile.view import send_profile_view
+from bot.services import user_service
 from bot.utils.i18n import detect_lang, t
 from bot.utils.logging import get_logger
 from bot.utils.profile_helpers import format_search_filters
@@ -20,17 +19,13 @@ router = Router()
 
 
 async def get_search_filters(tg_id: str) -> dict:
-    async with await get_db_session() as session:
-        repo = UserRepository(session)
-        user = await repo.get_user_by_tg_id(tg_id)
-        prefs = user.preferences if user and user.preferences else {}
-        return prefs.get("search_filters", {})
+    user = await user_service.get_user_by_tg_id(tg_id)
+    prefs = user.preferences if user and user.preferences else {}
+    return prefs.get("search_filters", {})
 
 
 async def get_user_and_lang(tg_id: str, fallback_lang_code: str | None = None):
-    async with await get_db_session() as session:
-        repo = UserRepository(session)
-        user = await repo.get_user_by_tg_id(tg_id)
+    user = await user_service.get_user_by_tg_id(tg_id)
     lang = detect_lang(
         user.language_code if user and user.language_code else fallback_lang_code
     )
@@ -110,9 +105,7 @@ async def save_min_salary(message: types.Message, state: FSMContext):
             return
         value = int(raw)
 
-    async with await get_db_session() as session:
-        repo = UserRepository(session)
-        await repo.update_search_filters(user_id, min_salary=value)
+    await user_service.update_search_filters(user_id, min_salary=value)
 
     await send_search_settings(message, user_id)
     await state.clear()
@@ -124,9 +117,7 @@ async def cb_toggle_remote(call: types.CallbackQuery, state: FSMContext):
     filters = await get_search_filters(tg_id)
     new_value = not bool(filters.get("remote_only"))
 
-    async with await get_db_session() as session:
-        repo = UserRepository(session)
-        await repo.update_search_filters(tg_id, remote_only=new_value)
+    await user_service.update_search_filters(tg_id, remote_only=new_value)
 
     await send_search_settings(call, tg_id, edit=True)
 
@@ -140,9 +131,7 @@ async def cb_set_freshness(call: types.CallbackQuery, state: FSMContext):
     except Exception:
         days = None
 
-    async with await get_db_session() as session:
-        repo = UserRepository(session)
-        await repo.update_search_filters(tg_id, freshness_days=days)
+    await user_service.update_search_filters(tg_id, freshness_days=days)
 
     await send_search_settings(call, tg_id, edit=True)
 
@@ -168,9 +157,7 @@ async def cb_set_employment(call: types.CallbackQuery, state: FSMContext):
     value = call.data.split(":")[1]
     employment_value = None if value == "clear" else value
 
-    async with await get_db_session() as session:
-        repo = UserRepository(session)
-        await repo.update_search_filters(tg_id, employment=employment_value)
+    await user_service.update_search_filters(tg_id, employment=employment_value)
 
     await send_search_settings(call, tg_id, edit=True)
 
@@ -196,9 +183,7 @@ async def cb_set_experience(call: types.CallbackQuery, state: FSMContext):
     value = call.data.split(":")[1]
     experience_value = None if value == "clear" else value
 
-    async with await get_db_session() as session:
-        repo = UserRepository(session)
-        await repo.update_search_filters(tg_id, experience=experience_value)
+    await user_service.update_search_filters(tg_id, experience=experience_value)
 
     await send_search_settings(call, tg_id, edit=True)
 
@@ -206,14 +191,12 @@ async def cb_set_experience(call: types.CallbackQuery, state: FSMContext):
 @router.callback_query(F.data == "search_clear_filters")
 async def cb_clear_filters(call: types.CallbackQuery, state: FSMContext):
     tg_id = str(call.from_user.id)
-    async with await get_db_session() as session:
-        repo = UserRepository(session)
-        await repo.update_search_filters(
-            tg_id,
-            min_salary=None,
-            remote_only=None,
-            freshness_days=None,
-            employment=None,
-            experience=None,
-        )
+    await user_service.update_search_filters(
+        tg_id,
+        min_salary=None,
+        remote_only=None,
+        freshness_days=None,
+        employment=None,
+        experience=None,
+    )
     await send_search_settings(call, tg_id, edit=True)

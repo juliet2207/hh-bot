@@ -3,9 +3,8 @@ import html
 from aiogram import F, Router, types
 from aiogram.fsm.context import FSMContext
 
-from bot.db.database import db_session
-from bot.db.user_repository import UserRepository
 from bot.handlers.profile.states import EditProfile
+from bot.services import user_service
 from bot.services.hh_service import hh_service
 from bot.utils.i18n import t
 from bot.utils.lang import resolve_lang
@@ -39,9 +38,7 @@ async def send_city_menu(
     message_id: int | None = None,
 ):
     tg_id = str(message_obj.from_user.id) if message_obj.from_user else None
-    async with db_session() as session:
-        repo = UserRepository(session)
-        user = await repo.get_user_by_tg_id(tg_id) if tg_id else None
+    user = await user_service.get_user_by_tg_id(tg_id) if tg_id else None
 
     if not user:
         target = (
@@ -177,36 +174,35 @@ async def cb_city_pick(call: types.CallbackQuery, state: FSMContext):
         await call.answer()
         return
 
-    async with db_session() as session:
-        repo = UserRepository(session)
-        user = await repo.get_user_by_tg_id(str(call.from_user.id))
+    user = await user_service.get_user_by_tg_id(str(call.from_user.id))
+    if not user:
+        await call.message.answer(t("profile.no_profile", lang))
+        await call.answer()
+        return
 
-        if not user:
-            await call.message.answer(t("profile.no_profile", lang))
-            await call.answer()
-            return
+    prefs = user.preferences or {}
+    history = prefs.get("city_history") or []
+    if idx >= len(history) or idx < 0:
+        await call.message.answer(
+            t("profile.edit_city_not_found", lang).format(city="")
+        )
+        await call.answer()
+        return
 
-        prefs = user.preferences or {}
-        history = prefs.get("city_history") or []
-        if idx >= len(history) or idx < 0:
-            await call.message.answer(
-                t("profile.edit_city_not_found", lang).format(city="")
-            )
-            await call.answer()
-            return
+    item = history[idx]
+    city = item.get("city")
+    area_id = item.get("area_id")
+    if not city or not area_id:
+        await call.message.answer(t("profile.edit_city_prompt", lang))
+        await state.set_state(EditProfile.city)
+        await call.answer()
+        return
 
-        item = history[idx]
-        city = item.get("city")
-        area_id = item.get("area_id")
-        if not city or not area_id:
-            await call.message.answer(t("profile.edit_city_prompt", lang))
-            await state.set_state(EditProfile.city)
-            await call.answer()
-            return
-
-        await repo.update_user_city(str(call.from_user.id), city, area_id)
-        new_history = _update_city_history(history, city, area_id)
-        await repo.update_preferences(str(call.from_user.id), city_history=new_history)
+    await user_service.update_user_city(str(call.from_user.id), city, area_id)
+    new_history = _update_city_history(history, city, area_id)
+    await user_service.update_preferences(
+        str(call.from_user.id), city_history=new_history
+    )
 
     await send_city_menu(call, lang, edit=True)
 
@@ -224,9 +220,7 @@ async def save_city(message: types.Message, state: FSMContext):
         return
 
     if city_input.lower() in {"clear", "удалить", "сбросить", "none", "null"}:
-        async with db_session() as session:
-            repo = UserRepository(session)
-            await repo.update_user_city(user_id, None, None)
+        await user_service.update_user_city(user_id, None, None)
         await message.answer(t("profile.edit_city_cleared", lang))
         await state.clear()
         return
@@ -246,15 +240,13 @@ async def save_city(message: types.Message, state: FSMContext):
         )
         return
 
-    async with db_session() as session:
-        repo = UserRepository(session)
-        user = await repo.get_user_by_tg_id(user_id)
-        prefs = user.preferences or {} if user else {}
-        history = prefs.get("city_history") or []
-        new_history = _update_city_history(history, city_input, area_id)
+    user = await user_service.get_user_by_tg_id(user_id)
+    prefs = user.preferences or {} if user else {}
+    history = prefs.get("city_history") or []
+    new_history = _update_city_history(history, city_input, area_id)
 
-        await repo.update_user_city(user_id, city_input, area_id)
-        await repo.update_preferences(user_id, city_history=new_history)
+    await user_service.update_user_city(user_id, city_input, area_id)
+    await user_service.update_preferences(user_id, city_history=new_history)
 
     state_data = await state.get_data()
     menu_chat_id = state_data.get("city_menu_chat_id")

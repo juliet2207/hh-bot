@@ -4,10 +4,9 @@ from aiogram import Router
 from aiogram.filters import Command
 from aiogram.types import Message
 
-from bot.db import SearchQueryRepository
-from bot.db.database import db_session
 from bot.handlers.search.common import VACANCIES_PER_PAGE, build_search_keyboard
 from bot.handlers.search.helpers import get_or_create_user_lang
+from bot.services import search_service
 from bot.services.hh_service import hh_service
 from bot.utils.i18n import detect_lang, t
 from bot.utils.logging import get_logger
@@ -78,13 +77,10 @@ async def _handle_no_query(
         return True
 
     last_query = None
-    async with db_session() as session:
-        if session:
-            try:
-                search_repo = SearchQueryRepository(session)
-                last_query = await search_repo.get_latest_search_query_any(user_db_id)
-            except Exception as e:
-                logger.error(f"Failed to get last search query for user {user_id}: {e}")
+    try:
+        last_query = await search_service.get_latest_search_query_any(user_db_id)
+    except Exception as e:
+        logger.error(f"Failed to get last search query for user {user_id}: {e}")
 
     if not last_query:
         await message.answer(t("search.no_previous", lang))
@@ -143,23 +139,18 @@ async def _run_new_search(
         )
 
         if user_db_id:
-            async with db_session() as session:
-                if session:
-                    try:
-                        search_repo = SearchQueryRepository(session)
-                        await search_repo.create_search_query(
-                            user_id=user_db_id,
-                            query_text=query,
-                            results_count=0,
-                            response_time=response_time,
-                        )
-                        logger.debug(
-                            f"Stored search query with no results for user {user_db_id}"
-                        )
-                    except Exception as e:
-                        logger.error(
-                            f"Failed to store search query for user {user_db_id}: {e}"
-                        )
+            try:
+                await search_service.create_search_query(
+                    user_id=user_db_id,
+                    query_text=query,
+                    results_count=0,
+                    response_time=response_time,
+                )
+                logger.debug(
+                    f"Stored search query with no results for user {user_db_id}"
+                )
+            except Exception as e:
+                logger.error(f"Failed to store search query for user {user_db_id}: {e}")
 
         await message.answer(t("search.no_results", lang).format(query=query))
         return

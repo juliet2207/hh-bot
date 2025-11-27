@@ -3,10 +3,10 @@ import asyncio
 from aiogram import Router
 from aiogram.types import CallbackQuery
 
-from bot.db import CVRepository, CVType, UserRepository
-from bot.db.database import db_session
+from bot.db import CVType
 from bot.handlers.search.common import format_document_header, safe_answer
 from bot.handlers.search.vacancy.prompts import DOCUMENT_META
+from bot.services import cv_service, user_service
 from bot.services.openai_service import openai_service
 from bot.utils.i18n import detect_lang, t
 from bot.utils.logging import get_logger
@@ -62,25 +62,14 @@ async def _parse_callback(
 async def _get_user_and_lang(
     callback: CallbackQuery, lang: str
 ) -> tuple[int | None, object | None, str]:
-    user_db_id = None
-    user_obj = None
-    async with db_session() as session:
-        if session:
-            try:
-                user_repo = UserRepository(session)
-                user_obj = await user_repo.get_or_create_user(
-                    tg_user_id=str(callback.from_user.id),
-                    username=callback.from_user.username,
-                    first_name=callback.from_user.first_name,
-                    last_name=callback.from_user.last_name,
-                    language_code=callback.from_user.language_code,
-                )
-                lang = detect_lang(user_obj.language_code)
-                user_db_id = user_obj.id
-            except Exception as e:
-                logger.error(
-                    f"Failed to get user {callback.from_user.id} from database: {e}"
-                )
+    user_obj, lang = await user_service.get_or_create_user_with_lang(
+        tg_user_id=str(callback.from_user.id),
+        username=callback.from_user.username,
+        first_name=callback.from_user.first_name,
+        last_name=callback.from_user.last_name,
+        language_code=callback.from_user.language_code,
+    )
+    user_db_id = user_obj.id if user_obj else None
     return user_db_id, user_obj, lang
 
 
@@ -107,19 +96,14 @@ async def _get_vacancy(
 
 async def _get_existing_doc(
     user_db_id: int, vacancy_db_id: int, doc_type: CVType
-) -> tuple[CVRepository | None, object | None]:
-    async with db_session() as session:
-        if not session:
-            return None, None
-        cv_repo = CVRepository(session)
-        try:
-            existing_doc = await cv_repo.get_cv(user_db_id, vacancy_db_id, doc_type)
-            return cv_repo, existing_doc
-        except Exception as e:
-            logger.error(
-                f"Failed to fetch cached doc type={int(doc_type)} for user {user_db_id}: {e}"
-            )
-            return cv_repo, None
+) -> object | None:
+    try:
+        return await cv_service.get_cv(user_db_id, vacancy_db_id, doc_type)
+    except Exception as e:
+        logger.error(
+            f"Failed to fetch cached doc type={int(doc_type)} for user {user_db_id}: {e}"
+        )
+        return None
 
 
 async def _generate_document(messages, doc_meta, llm_settings, lang: str) -> str | None:
@@ -169,9 +153,7 @@ async def vacancy_cv_handler(callback: CallbackQuery):
             return
         vacancy_db_id = vacancy["db_id"]
 
-        cv_repo, existing_doc = await _get_existing_doc(
-            user_db_id, vacancy_db_id, doc_type
-        )
+        existing_doc = await _get_existing_doc(user_db_id, vacancy_db_id, doc_type)
 
         if action in {"send", "generate"} and existing_doc and action != "regen":
             header, _ = format_document_header(vacancy, lang, doc_type)
@@ -224,19 +206,18 @@ async def vacancy_cv_handler(callback: CallbackQuery):
             await callback.message.answer(t(doc_meta["empty_key"], lang))
             return
 
-        if cv_repo:
-            try:
-                normalized_text = str(doc_text)
-                if doc_type == CVType.COVER_LETTER:
-                    normalized_text = sanitize_cover_letter_text(normalized_text)
-                await cv_repo.upsert_cv(
-                    user_db_id, vacancy_db_id, normalized_text, doc_type
-                )
-                doc_text = normalized_text
-            except Exception as e:
-                logger.error(
-                    f"Failed to cache doc type={int(doc_type)} for user {user_db_id}: {e}"
-                )
+        try:
+            normalized_text = str(doc_text)
+            if doc_type == CVType.COVER_LETTER:
+                normalized_text = sanitize_cover_letter_text(normalized_text)
+            await cv_service.upsert_cv(
+                user_db_id, vacancy_db_id, normalized_text, doc_type
+            )
+            doc_text = normalized_text
+        except Exception as e:
+            logger.error(
+                f"Failed to cache doc type={int(doc_type)} for user {user_db_id}: {e}"
+            )
 
         header, _ = format_document_header(vacancy, lang, doc_type)
         try:

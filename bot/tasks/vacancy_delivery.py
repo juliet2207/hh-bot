@@ -5,10 +5,8 @@ from zoneinfo import ZoneInfo
 
 from aiogram import Bot
 
-from bot.db.database import db_session
-from bot.db.search_query_repository import SearchQueryRepository
-from bot.db.user_repository import UserRepository
 from bot.handlers.search.common import build_search_keyboard
+from bot.services import search_service, user_service
 from bot.services.hh_service import hh_service
 from bot.utils.i18n import detect_lang
 from bot.utils.logging import get_logger
@@ -58,9 +56,7 @@ async def run_daily_vacancies(bot: Bot):
         return
 
     now_utc = datetime.now(UTC)
-    async with db_session() as session:
-        user_repo = UserRepository(session)
-        users = await user_repo.get_users_with_schedule()
+    users = await user_service.get_users_with_schedule()
 
     processed = 0
     for user in users:
@@ -97,9 +93,7 @@ async def send_vacancies_to_user(
     sent_ids_set = set(sent_ids)
     lang = detect_lang(user.language_code)
 
-    async with db_session() as session:
-        search_repo = SearchQueryRepository(session)
-        last_query = await search_repo.get_latest_search_query_any(user.id)
+    last_query = await search_service.get_latest_search_query_any(user.id)
 
     if not last_query or not last_query.query_text:
         logger.info(f"Skip user {user.tg_user_id}: no last search query")
@@ -170,12 +164,10 @@ async def send_vacancies_to_user(
     new_ids = [vac.get("id") for vac in vacancies if vac.get("id")]
     combined_ids = (sent_ids + new_ids)[-MAX_SENT_IDS:]
 
-    async with db_session() as session:
-        repo = UserRepository(session)
-        await repo.update_preferences(
-            user.tg_user_id,
-            vacancy_last_sent_at=now_utc.isoformat(),
-            sent_vacancy_ids=combined_ids,
-        )
+    await user_service.update_preferences(
+        user.tg_user_id,
+        vacancy_last_sent_at=now_utc.isoformat(),
+        sent_vacancy_ids=combined_ids,
+    )
 
     return True

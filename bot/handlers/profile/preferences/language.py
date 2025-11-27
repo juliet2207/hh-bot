@@ -1,7 +1,6 @@
 from aiogram import F, types
 
-from bot.db.database import get_db_session
-from bot.db.user_repository import UserRepository
+from bot.services import user_service
 from bot.utils.i18n import detect_lang, t
 from bot.utils.logging import get_logger
 
@@ -49,9 +48,7 @@ async def cb_prefs_set_lang(call: types.CallbackQuery, state):
         return
 
     target_lang = detect_lang(code)
-    async with await get_db_session() as session:
-        repo = UserRepository(session)
-        await repo.update_language_code(str(call.from_user.id), target_lang)
+    await user_service.update_language_code(str(call.from_user.id), target_lang)
 
     lang_name = t(f"profile.languages.{target_lang}", target_lang)
     await call.message.answer(

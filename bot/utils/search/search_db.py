@@ -2,9 +2,10 @@
 
 from sqlalchemy import select, update
 
-from bot.db import SearchQueryRepository, UserSearchResultRepository, VacancyRepository
-from bot.db.database import get_db_session
+from bot.db import UserSearchResultRepository, VacancyRepository
+from bot.db.database import db_session
 from bot.db.models import UserSearchResult, Vacancy
+from bot.services import search_service
 from bot.utils.logging import get_logger
 from bot.utils.search.search_cache import cache_vacancies, get_cached_vacancies
 
@@ -64,108 +65,106 @@ async def store_search_results(
     per_page: int = 100,
 ) -> bool:
     """Store all search results in database. Duplicates are automatically skipped."""
-    db_session = await get_db_session()
-    if not db_session:
-        logger.warning("Could not get database session for storing search results")
-        return False
+    async with db_session() as session:
+        if not session:
+            logger.warning("Could not get database session for storing search results")
+            return False
+        try:
+            vacancy_repo = VacancyRepository(session)
+            user_search_result_repo = UserSearchResultRepository(session)
 
-    try:
-        search_repo = SearchQueryRepository(db_session)
-        vacancy_repo = VacancyRepository(db_session)
-        user_search_result_repo = UserSearchResultRepository(db_session)
-
-        search_query = await search_repo.create_search_query(
-            user_id=user_db_id,
-            query_text=query_text,
-            search_params={"per_page": per_page},
-            results_count=len(vacancies),
-            response_time=response_time,
-        )
-
-        all_vacancy_data = [extract_vacancy_data(vacancy) for vacancy in vacancies]
-        hh_vacancy_ids = [v["hh_vacancy_id"] for v in all_vacancy_data]
-
-        existing_vacancies = await vacancy_repo.get_vacancies_by_hh_ids(hh_vacancy_ids)
-        existing_ids = set(existing_vacancies.keys())
-
-        new_vacancies_data = [
-            v for v in all_vacancy_data if v["hh_vacancy_id"] not in existing_ids
-        ]
-
-        if new_vacancies_data:
-            new_vacancies_dict = await vacancy_repo.bulk_create_vacancies(
-                new_vacancies_data
+            search_query = await search_service.create_search_query(
+                user_id=user_db_id,
+                query_text=query_text,
+                results_count=len(vacancies),
+                response_time=response_time,
+                session=session,
             )
-            existing_vacancies.update(new_vacancies_dict)
-        else:
-            new_vacancies_dict = {}
 
-        for vacancy_data in all_vacancy_data:
-            hh_id = vacancy_data["hh_vacancy_id"]
-            if hh_id in existing_ids:
-                vac_obj = existing_vacancies.get(hh_id)
-                if not vac_obj:
-                    continue
-                update_fields = {}
-                for field in [
-                    "title",
-                    "company",
-                    "location",
-                    "url",
-                    "description",
-                    "requirements",
-                    "salary_from",
-                    "salary_to",
-                    "salary_currency",
-                    "employment_type",
-                    "experience",
-                    "schedule",
-                ]:
-                    val = vacancy_data.get(field)
-                    if val is not None and getattr(vac_obj, field) != val:
-                        update_fields[field] = val
-                if update_fields:
-                    stmt = (
-                        update(Vacancy)
-                        .where(Vacancy.hh_vacancy_id == hh_id)
-                        .values(**update_fields)
+            all_vacancy_data = [extract_vacancy_data(vacancy) for vacancy in vacancies]
+            hh_vacancy_ids = [v["hh_vacancy_id"] for v in all_vacancy_data]
+
+            existing_vacancies = await vacancy_repo.get_vacancies_by_hh_ids(
+                hh_vacancy_ids
+            )
+            existing_ids = set(existing_vacancies.keys())
+
+            new_vacancies_data = [
+                v for v in all_vacancy_data if v["hh_vacancy_id"] not in existing_ids
+            ]
+
+            if new_vacancies_data:
+                new_vacancies_dict = await vacancy_repo.bulk_create_vacancies(
+                    new_vacancies_data
+                )
+                existing_vacancies.update(new_vacancies_dict)
+            else:
+                new_vacancies_dict = {}
+
+            for vacancy_data in all_vacancy_data:
+                hh_id = vacancy_data["hh_vacancy_id"]
+                if hh_id in existing_ids:
+                    vac_obj = existing_vacancies.get(hh_id)
+                    if not vac_obj:
+                        continue
+                    update_fields = {}
+                    for field in [
+                        "title",
+                        "company",
+                        "location",
+                        "url",
+                        "description",
+                        "requirements",
+                        "salary_from",
+                        "salary_to",
+                        "salary_currency",
+                        "employment_type",
+                        "experience",
+                        "schedule",
+                    ]:
+                        val = vacancy_data.get(field)
+                        if val is not None and getattr(vac_obj, field) != val:
+                            update_fields[field] = val
+                    if update_fields:
+                        stmt = (
+                            update(Vacancy)
+                            .where(Vacancy.hh_vacancy_id == hh_id)
+                            .values(**update_fields)
+                        )
+                        await session.execute(stmt)
+            if existing_ids:
+                await session.commit()
+
+            user_search_results_data = []
+            for i, vacancy_data in enumerate(all_vacancy_data, 1):
+                hh_id = vacancy_data["hh_vacancy_id"]
+                vacancy_obj = existing_vacancies.get(hh_id)
+                if vacancy_obj:
+                    user_search_results_data.append(
+                        {
+                            "user_id": user_db_id,
+                            "search_query_id": search_query.id,
+                            "vacancy_id": vacancy_obj.id,
+                            "position": i,
+                        }
                     )
-                    await db_session.execute(stmt)
-        if existing_ids:
-            await db_session.commit()
 
-        user_search_results_data = []
-        for i, vacancy_data in enumerate(all_vacancy_data, 1):
-            hh_id = vacancy_data["hh_vacancy_id"]
-            vacancy_obj = existing_vacancies.get(hh_id)
-            if vacancy_obj:
-                user_search_results_data.append(
-                    {
-                        "user_id": user_db_id,
-                        "search_query_id": search_query.id,
-                        "vacancy_id": vacancy_obj.id,
-                        "position": i,
-                    }
+            if user_search_results_data:
+                await user_search_result_repo.bulk_create_user_search_results(
+                    user_search_results_data
                 )
 
-        if user_search_results_data:
-            await user_search_result_repo.bulk_create_user_search_results(
-                user_search_results_data
+            new_count = len(new_vacancies_dict)
+            existing_count = len(vacancies) - new_count
+
+            logger.info(
+                f"Stored search query and {len(vacancies)} results for user {user_db_id} "
+                f"(new: {new_count}, existing: {existing_count})"
             )
-
-        new_count = len(new_vacancies_dict)
-        existing_count = len(vacancies) - new_count
-
-        logger.info(
-            f"Stored search query and {len(vacancies)} results for user {user_db_id} "
-            f"(new: {new_count}, existing: {existing_count})"
-        )
-        return True
-    except Exception as e:
-        logger.error(f"Failed to store search results for user {user_db_id}: {e}")
-        return False
-    finally:
-        await db_session.close()
+            return True
+        except Exception as e:
+            logger.error(f"Failed to store search results for user {user_db_id}: {e}")
+            return False
 
 
 async def get_vacancies_from_db(
@@ -177,16 +176,18 @@ async def get_vacancies_from_db(
         if cached is not None:
             return cached
 
-    db_session = await get_db_session()
-    if not db_session:
-        logger.warning("Could not get database session for retrieving vacancies")
-        return [], 0
+    async with db_session() as session:
+        if not session:
+            logger.warning("Could not get database session for retrieving vacancies")
+            return [], 0
 
-    try:
-        search_repo = SearchQueryRepository(db_session)
-        search_query = await search_repo.get_latest_search_query(
-            user_id=user_db_id, query_text=query_text
-        )
+        try:
+            search_query = await search_service.get_latest_search_query(
+                user_db_id, query_text, session=session
+            )
+        except Exception as e:
+            logger.error(f"Failed to get vacancies from DB for user {user_db_id}: {e}")
+            return [], 0
 
         if not search_query:
             logger.warning(
@@ -200,7 +201,7 @@ async def get_vacancies_from_db(
             .where(UserSearchResult.search_query_id == search_query.id)
             .order_by(UserSearchResult.position)
         )
-        result = await db_session.execute(stmt)
+        result = await session.execute(stmt)
         rows = result.all()
 
         vacancies: list[dict] = []
@@ -246,9 +247,3 @@ async def get_vacancies_from_db(
             f"Retrieved {len(vacancies)} vacancies from DB for user {user_db_id}, query '{query_text}'"
         )
         return vacancies, total_found
-
-    except Exception as e:
-        logger.error(f"Failed to get vacancies from DB for user {user_db_id}: {e}")
-        return [], 0
-    finally:
-        await db_session.close()
